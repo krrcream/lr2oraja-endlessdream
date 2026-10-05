@@ -248,7 +248,7 @@ public final class PracticeConfiguration {
 			practice.property.total = MathUtils.clamp(practice.property.total + (inc ? 10 : -10), 20, 5000);
 		}, property -> "TOTAL : " + (int)property.total),
 		FREQ((practice, inc) -> {
-			practice.property.freq = MathUtils.clamp(practice.property.freq + (inc ? 5 : -5), 50, 200);
+			practice.property.freq = MathUtils.clamp(practice.property.freq + (inc ? 0.5f : -0.5f), 50f, 200f);
 		}, property -> "FREQUENCY : " + property.freq),
 		GRAPHTYPE((practice, inc) -> {
 			practice.property.graphtype = (practice.property.graphtype + (inc ? 1 : 2)) % 3;
@@ -326,7 +326,7 @@ public final class PracticeConfiguration {
 		/**
 		 * 再生速度倍率
 		 */
-		public int freq = 100;
+		public float freq = 100f;
 		/**
 		 * TOTAL値
 		 */

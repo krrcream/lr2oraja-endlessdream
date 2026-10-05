@@ -245,6 +245,15 @@ public final class GrooveGauge {
 		public GaugeElementProperty getProperty() {
 			return element;
 		}
+
+		/**
+		 * 各判定毎のゲージ増減値を上書きする。値は絶対値として扱われ、GaugeModifierによる補正は受けない。
+		 */
+		public void setGaugeValues(float[] values) {
+			for(int i = 0; i < gauge.length && i < values.length; i++) {
+				gauge[i] = values[i];
+			}
+		}
 		
 		public boolean isQualified() {
 			return value > 0f && value >= element.border;

@@ -14,9 +14,12 @@ public class FreqTrainerMenu {
 
     public static ImBoolean FREQ_TRAINER_ENABLED = new ImBoolean(false);
 
-    private static int[] freq = new int[] {100};
+    private static final float RESET_VALUE = 100f;
 
-    private static List<Integer> buttonVals = Arrays.asList(-10, -5, -1, 100, 1, 5, 10);
+    // playback rate in percent, 100 = 1.00x; steps of 0.1 are supported
+    private static float[] freq = new float[] {100f};
+
+    private static List<Float> buttonVals = Arrays.asList(-10f, -5f, -1f, -0.1f, RESET_VALUE, 0.1f, 1f, 5f, 10f);
 
     public static void show(ImBoolean showFreqTrainer) {
         float relativeX = windowWidth * 0.47f;
@@ -28,22 +31,23 @@ public class FreqTrainerMenu {
             ImGui.text("slower by a given percent.");
 
             buttonVals.forEach(value -> {
-                if (value == 100) {
+                if (value == RESET_VALUE) {
                     if(ImGui.button("Reset")) {
-                        freq[0] = 100;
+                        freq[0] = RESET_VALUE;
                     }
                 } else {
-                    if(ImGui.button((value > 0 ? "+" : "") + value + "%")) {
+                    if(ImGui.button(formatPercent(value))) {
                         freq[0] = clamp(freq[0] + value);
                     }
                 }
                 ImGui.sameLine();
             });
             ImGui.newLine();
-            ImGui.sliderInt("%",
+            ImGui.sliderFloat("%",
                     freq,
-                    50,
-                    200);
+                    50f,
+                    200f,
+                    "%.1f");
 
             ImGui.text("Controls");
             ImGui.indent();
@@ -56,24 +60,30 @@ public class FreqTrainerMenu {
         ImGui.end();
     }
 
-    private static int clamp(int result) {
-        return Math.max(50, Math.min(200, result));
+    // snaps to 0.1 so repeated presses and slider drags stay on a clean value
+    private static float clamp(float result) {
+        return Math.max(50f, Math.min(200f, Math.round(result * 10f) / 10f));
+    }
+
+    private static String formatPercent(float value) {
+        String text = value == (int) value ? Integer.toString((int) value) : Float.toString(value);
+        return (value > 0 ? "+" : "") + text + "%";
     }
 
     public static boolean isFreqTrainerEnabled() {
         return FREQ_TRAINER_ENABLED.get();
     }
 
-    public static int getFreq() {
+    public static float getFreq() {
         return freq[0];
     }
 
     public static boolean isFreqNegative() {
-        return freq[0] < 100;
+        return freq[0] < RESET_VALUE;
     }
 
     public static String getFreqString() {
-        String rate = String.format("%.02f", (freq[0] / 100.0f));
+        String rate = String.format("%.3f", (freq[0] / 100.0f));
         return "[" + rate + "x]";
     }
 
