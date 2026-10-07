@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import bms.player.beatoraja.audio.BMSLoudnessAnalyzer;
 import bms.player.beatoraja.modmenu.FreqTrainerMenu;
+import bms.player.beatoraja.modmenu.GaugeTrainer;
 import bms.player.beatoraja.modmenu.ImGuiNotify;
 import bms.player.beatoraja.modmenu.JudgeTrainer;
 import bms.player.beatoraja.modmenu.RandomTrainer;
@@ -247,9 +248,9 @@ public class BMSPlayer extends MainState {
 		resource.setFreqOn(false);
 		resource.setFreqString("");
 		if(FreqTrainerMenu.isFreqTrainerEnabled() && autoplay.mode == BMSPlayerMode.Mode.PLAY && resource.getCourseBMSModels() == null) {
-			int freq = FreqTrainerMenu.getFreq();
+			float freq = FreqTrainerMenu.getFreq();
 
-			playtime = (model.getLastNoteTime() + 1000) * 100 / freq + TIME_MARGIN;
+			playtime = (int)((model.getLastNoteTime() + 1000) * 100.0 / freq) + TIME_MARGIN;
 
 			// Chart render scale, note judge is handled by create()::judge.init() later
 			BMSModelUtils.changeFrequency(model, freq / 100f);
@@ -281,7 +282,12 @@ public class BMSPlayer extends MainState {
 			}
 
 			// Override judge rank
-			if (JudgeTrainer.isActive()) {
+			if (JudgeTrainer.isIidxLike()) {
+				// IIDX-Like Type replaces the judge windows in JudgeManager and must not go through
+				// the judge rank override below (getJudgeWindowRate returns a sentinel for it).
+				assist = Math.max(assist, 2);
+				score = false;
+			} else if (JudgeTrainer.isActive()) {
 				// This could work since beatoraja would firstly convert the judge rank that is not defined as
 				// the window rate to it and directly mark the model as BMSON type (see BMSPlayerRule::validate)
 				int overridingJudgeWindowRate = JudgeTrainer.getJudgeWindowRate(model.getMode());
@@ -465,6 +471,7 @@ public class BMSPlayer extends MainState {
 		}
 		// プレイゲージ、初期値設定
 		gauge = GrooveGauge.create(model, replay != null ? replay.gauge : config.getGauge(), resource);
+		GaugeTrainer.apply(gauge, model);
 		// ゲージログ初期化
 		gaugelog = new FloatArray[gauge.getGaugeTypeLength()];
 		for(int i = 0; i < gaugelog.length; i++) {
@@ -685,15 +692,16 @@ public class BMSPlayer extends MainState {
 					PracticeProperty property = practice.getPracticeProperty();
 					control.setEnableControl(true);
 					control.setEnableCursor(true);
-					if (property.freq != 100) {
+					if (property.freq != 100f) {
 						BMSModelUtils.changeFrequency(model, property.freq / 100f);
 						if (main.getConfig().getAudioConfig().getFreqOption() == FrequencyType.FREQUENCY) {
 							main.getAudioProcessor().setGlobalPitch(property.freq / 100f);
 						}
 					}
 					model.setTotal(property.total);
-					PracticeModifier pm = new PracticeModifier(property.starttime * 100 / property.freq,
-							property.endtime * 100 / property.freq);
+					PracticeModifier pm = new PracticeModifier(
+							(long)(property.starttime * 100.0 / property.freq),
+							(long)(property.endtime * 100.0 / property.freq));
 					pm.modify(model);
 					if (model.getMode().player == 2) {
 						if (property.doubleop == 1) {
@@ -711,12 +719,13 @@ public class BMSPlayer extends MainState {
 					randomModifier.modify(model);
 
 					gauge = practice.getGauge(model);
+					GaugeTrainer.apply(gauge, model);
 					model.setJudgerank(property.judgerank);
 					lanerender.init(model);
 					judge.init(model, resource);
 					skin.pomyu.init();
-					starttimeoffset = (property.starttime > 1000 ? property.starttime - 1000 : 0) * 100 / property.freq;
-					playtime = (property.endtime + 1000) * 100 / property.freq + TIME_MARGIN;
+					starttimeoffset = (long)((property.starttime > 1000 ? property.starttime - 1000 : 0) * 100.0 / property.freq);
+					playtime = (int)((property.endtime + 1000) * 100.0 / property.freq) + TIME_MARGIN;
 					bga.prepare(this);
 					state = STATE_READY;
 					timer.setTimerOn(TIMER_READY);
