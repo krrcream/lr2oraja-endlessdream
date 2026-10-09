@@ -164,6 +164,21 @@ public class PlayConfigurationView implements Initializable {
 	private TextField soundpath;
 
 	@FXML
+	private TextField iidxSoundPath;
+	@FXML
+	private TextField iidxMoviePath;
+	@FXML
+	private TextField iidx2bmsPath;
+	@FXML
+	private CheckBox iidxCacheEnabled;
+	@FXML
+	private Spinner<Integer> iidxCacheMaxSizeMB;
+	@FXML
+	private CheckBox iidxIncludeBGA;
+	@FXML
+	private CheckBox iidxIncludePreview;
+
+	@FXML
 	private NumericSpinner<Integer> notesdisplaytiming;
 	@FXML
 	private CheckBox notesdisplaytimingautoadjust;
@@ -468,6 +483,14 @@ public class PlayConfigurationView implements Initializable {
 		bgmpath.setText(config.getBgmpath());
 		soundpath.setText(config.getSoundpath());
 
+		iidxSoundPath.setText(config.getIidxSoundPath());
+		iidxMoviePath.setText(config.getIidxMoviePath());
+		iidx2bmsPath.setText(config.getIidx2bmsPath());
+		iidxCacheEnabled.setSelected(config.isIidxCacheEnabled());
+		iidxCacheMaxSizeMB.getValueFactory().setValue(config.getIidxCacheMaxSizeMB());
+		iidxIncludeBGA.setSelected(config.isIidxIncludeBGA());
+		iidxIncludePreview.setSelected(config.isIidxIncludePreview());
+
 		resourceController.update(config);
 		discordController.update(config);
 		obsController.update(config);
@@ -618,6 +641,14 @@ public class PlayConfigurationView implements Initializable {
 		config.setBgmpath(bgmpath.getText());
 		config.setSoundpath(soundpath.getText());
 
+		config.setIidxSoundPath(iidxSoundPath.getText());
+		config.setIidxMoviePath(iidxMoviePath.getText());
+		config.setIidx2bmsPath(iidx2bmsPath.getText());
+		config.setIidxCacheEnabled(iidxCacheEnabled.isSelected());
+		config.setIidxCacheMaxSizeMB(iidxCacheMaxSizeMB.getValue());
+		config.setIidxIncludeBGA(iidxIncludeBGA.isSelected());
+		config.setIidxIncludePreview(iidxIncludePreview.isSelected());
+
 		resourceController.commit();
 		discordController.commit();
 		obsController.commit();
@@ -718,6 +749,30 @@ public class PlayConfigurationView implements Initializable {
     	String s = showDirectoryChooser("効果音のルートフォルダを選択してください");
     	if(s != null) {
     		soundpath.setText(s);
+    	}
+	}
+
+    @FXML
+	public void addIIDXSoundPath() {
+    	String s = showDirectoryChooser("IIDXのsoundフォルダを選択してください");
+    	if(s != null) {
+    		iidxSoundPath.setText(s);
+    	}
+	}
+
+    @FXML
+	public void addIIDXMoviePath() {
+    	String s = showDirectoryChooser("IIDXのmovieフォルダを選択してください");
+    	if(s != null) {
+    		iidxMoviePath.setText(s);
+    	}
+	}
+
+    @FXML
+	public void addIIDX2BMSPath() {
+    	String s = showDirectoryChooser("iidx2bmsのルートフォルダを選択してください");
+    	if(s != null) {
+    		iidx2bmsPath.setText(s);
     	}
 	}
 

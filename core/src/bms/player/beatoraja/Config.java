@@ -144,6 +144,36 @@ public class Config implements Validatable {
 
 	private String systemfontpath = "font/VL-Gothic-Regular.ttf";
 	private String messagefontpath = "font/VL-Gothic-Regular.ttf";
+
+	/**
+	 * IIDX音声データのルートディレクトリ。空の場合はIIDX連携が無効
+	 */
+	private String iidxSoundPath = "";
+	/**
+	 * IIDXムービー(BGA)データのルートディレクトリ
+	 */
+	private String iidxMoviePath = "";
+	/**
+	 * iidx2bms (Python) のチェックアウトディレクトリ
+	 */
+	private String iidx2bmsPath = "";
+	/**
+	 * 変換結果をキャッシュするかどうか
+	 */
+	private boolean iidxCacheEnabled = true;
+	/**
+	 * 変換キャッシュの上限サイズ(MB)
+	 */
+	private int iidxCacheMaxSizeMB = 2048;
+	/**
+	 * 変換時にBGAを含めるかどうか
+	 */
+	private boolean iidxIncludeBGA = true;
+	/**
+	 * 変換時にプレビュー音声を含めるかどうか
+	 */
+	private boolean iidxIncludePreview = true;
+
 	/**
 	 * BMSルートディレクトリパス
 	 */
@@ -454,6 +484,62 @@ public class Config implements Validatable {
 
 	public void setSoundpath(String soundpath) {
 		this.soundpath = soundpath;
+	}
+
+	public String getIidxSoundPath() {
+		return iidxSoundPath;
+	}
+
+	public void setIidxSoundPath(String iidxSoundPath) {
+		this.iidxSoundPath = iidxSoundPath;
+	}
+
+	public String getIidxMoviePath() {
+		return iidxMoviePath;
+	}
+
+	public void setIidxMoviePath(String iidxMoviePath) {
+		this.iidxMoviePath = iidxMoviePath;
+	}
+
+	public String getIidx2bmsPath() {
+		return iidx2bmsPath;
+	}
+
+	public void setIidx2bmsPath(String iidx2bmsPath) {
+		this.iidx2bmsPath = iidx2bmsPath;
+	}
+
+	public boolean isIidxCacheEnabled() {
+		return iidxCacheEnabled;
+	}
+
+	public void setIidxCacheEnabled(boolean iidxCacheEnabled) {
+		this.iidxCacheEnabled = iidxCacheEnabled;
+	}
+
+	public int getIidxCacheMaxSizeMB() {
+		return iidxCacheMaxSizeMB;
+	}
+
+	public void setIidxCacheMaxSizeMB(int iidxCacheMaxSizeMB) {
+		this.iidxCacheMaxSizeMB = iidxCacheMaxSizeMB;
+	}
+
+	public boolean isIidxIncludeBGA() {
+		return iidxIncludeBGA;
+	}
+
+	public void setIidxIncludeBGA(boolean iidxIncludeBGA) {
+		this.iidxIncludeBGA = iidxIncludeBGA;
+	}
+
+	public boolean isIidxIncludePreview() {
+		return iidxIncludePreview;
+	}
+
+	public void setIidxIncludePreview(boolean iidxIncludePreview) {
+		this.iidxIncludePreview = iidxIncludePreview;
 	}
 
 	public int getMaxSearchBarCount() {
@@ -870,6 +956,24 @@ public class Config implements Validatable {
 		playerpath = playerpath != null ? playerpath : PLAYERPATH_DEFAULT;
 		skinpath = skinpath != null ? skinpath : SKINPATH_DEFAULT;
 		downloadDirectory = validatePath(downloadDirectory) ? downloadDirectory : DEFAULT_DOWNLOAD_DIRECTORY;
+
+		iidxSoundPath = iidxSoundPath != null ? iidxSoundPath.trim() : "";
+		iidxMoviePath = iidxMoviePath != null ? iidxMoviePath.trim() : "";
+		iidx2bmsPath = iidx2bmsPath != null ? iidx2bmsPath.trim() : "";
+		iidxCacheMaxSizeMB = MathUtils.clamp(iidxCacheMaxSizeMB, 0, 1024 * 1024);
+		if (!iidxSoundPath.isEmpty()) {
+			// 連携が有効な設定に限りパスの妥当性を検査する。ここで落とさず警告に留めるのは、
+			// 外付けドライブが未接続のまま起動した場合でも設定画面から修正できるようにするため。
+			if (!validateDirectory(iidxSoundPath)) {
+				logger.warn("IIDX sound path is not a directory: {}", iidxSoundPath);
+			}
+			if (!iidxMoviePath.isEmpty() && !validateDirectory(iidxMoviePath)) {
+				logger.warn("IIDX movie path is not a directory: {}", iidxMoviePath);
+			}
+			if (iidx2bmsPath.isEmpty() || !Paths.get(iidx2bmsPath, "conversion", "conversion.py").toFile().isFile()) {
+				logger.warn("iidx2bms checkout is missing or invalid: {}", iidx2bmsPath);
+			}
+		}
 		return true;
 	}
 
@@ -982,5 +1086,9 @@ public class Config implements Validatable {
 			return false;
 		}
 		return true;
+	}
+
+	private boolean validateDirectory(String path) {
+		return validatePath(path) && Files.isDirectory(Paths.get(path));
 	}
 }

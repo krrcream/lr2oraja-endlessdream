@@ -392,6 +392,104 @@
                             </HBox.margin>
                         </Button>
                     </HBox>
+                    <HBox prefHeight="30.0" prefWidth="723.0">
+                        <VBox.margin>
+                            <Insets />
+                        </VBox.margin>
+                        <Label layoutX="10.0" layoutY="10.0" prefHeight="30.0" prefWidth="200.0" text="%IIDX_SOUND_PATH">
+                            <HBox.margin>
+                                <Insets left="10.0" right="10.0" top="10.0" />
+                            </HBox.margin>
+                        </Label>
+                        <TextField fx:id="iidxSoundPath" prefHeight="28.0" prefWidth="480.0">
+                            <HBox.margin>
+                                <Insets top="10.0" />
+                            </HBox.margin>
+                        </TextField>
+                        <Button mnemonicParsing="false" onAction="#addIIDXSoundPath" prefHeight="28.0" prefWidth="29.0" text="...">
+                            <HBox.margin>
+                                <Insets left="10.0" top="10.0" />
+                            </HBox.margin>
+                        </Button>
+                    </HBox>
+                    <HBox prefHeight="30.0" prefWidth="723.0">
+                        <VBox.margin>
+                            <Insets />
+                        </VBox.margin>
+                        <Label layoutX="10.0" layoutY="10.0" prefHeight="30.0" prefWidth="200.0" text="%IIDX_MOVIE_PATH">
+                            <HBox.margin>
+                                <Insets left="10.0" right="10.0" top="10.0" />
+                            </HBox.margin>
+                        </Label>
+                        <TextField fx:id="iidxMoviePath" prefHeight="28.0" prefWidth="480.0">
+                            <HBox.margin>
+                                <Insets top="10.0" />
+                            </HBox.margin>
+                        </TextField>
+                        <Button mnemonicParsing="false" onAction="#addIIDXMoviePath" prefHeight="28.0" prefWidth="29.0" text="...">
+                            <HBox.margin>
+                                <Insets left="10.0" top="10.0" />
+                            </HBox.margin>
+                        </Button>
+                    </HBox>
+                    <HBox prefHeight="30.0" prefWidth="723.0">
+                        <VBox.margin>
+                            <Insets />
+                        </VBox.margin>
+                        <Label layoutX="10.0" layoutY="10.0" prefHeight="30.0" prefWidth="200.0" text="%IIDX2BMS_PATH">
+                            <HBox.margin>
+                                <Insets left="10.0" right="10.0" top="10.0" />
+                            </HBox.margin>
+                        </Label>
+                        <TextField fx:id="iidx2bmsPath" prefHeight="28.0" prefWidth="480.0">
+                            <HBox.margin>
+                                <Insets top="10.0" />
+                            </HBox.margin>
+                        </TextField>
+                        <Button mnemonicParsing="false" onAction="#addIIDX2BMSPath" prefHeight="28.0" prefWidth="29.0" text="...">
+                            <HBox.margin>
+                                <Insets left="10.0" top="10.0" />
+                            </HBox.margin>
+                        </Button>
+                    </HBox>
+                    <HBox prefHeight="30.0" prefWidth="723.0">
+                        <VBox.margin>
+                            <Insets />
+                        </VBox.margin>
+                        <CheckBox fx:id="iidxCacheEnabled" mnemonicParsing="false" prefHeight="28.0" prefWidth="200.0" text="%IIDX_CACHE_ENABLED">
+                            <HBox.margin>
+                                <Insets left="10.0" top="10.0" />
+                            </HBox.margin>
+                        </CheckBox>
+                        <Label layoutX="10.0" layoutY="10.0" prefHeight="30.0" prefWidth="200.0" text="%IIDX_CACHE_MAX_SIZE_MB">
+                            <HBox.margin>
+                                <Insets left="10.0" right="10.0" top="10.0" />
+                            </HBox.margin>
+                        </Label>
+                        <NumericSpinner fx:id="iidxCacheMaxSizeMB" editable="true" prefHeight="28.0" prefWidth="150.0">
+                            <HBox.margin>
+                                <Insets top="10.0" />
+                            </HBox.margin>
+                            <valueFactory>
+                                <SpinnerValueFactory.IntegerSpinnerValueFactory amountToStepBy="64" initialValue="2048" max="102400" min="0" />
+                            </valueFactory>
+                        </NumericSpinner>
+                    </HBox>
+                    <HBox prefHeight="30.0" prefWidth="723.0">
+                        <VBox.margin>
+                            <Insets />
+                        </VBox.margin>
+                        <CheckBox fx:id="iidxIncludeBGA" mnemonicParsing="false" prefHeight="28.0" prefWidth="200.0" text="%IIDX_INCLUDE_BGA">
+                            <HBox.margin>
+                                <Insets left="10.0" top="10.0" />
+                            </HBox.margin>
+                        </CheckBox>
+                        <CheckBox fx:id="iidxIncludePreview" mnemonicParsing="false" prefHeight="28.0" prefWidth="200.0" text="%IIDX_INCLUDE_PREVIEW">
+                            <HBox.margin>
+                                <Insets left="10.0" top="10.0" />
+                            </HBox.margin>
+                        </CheckBox>
+                    </HBox>
                 </VBox>
             </AnchorPane>
         </Tab>
