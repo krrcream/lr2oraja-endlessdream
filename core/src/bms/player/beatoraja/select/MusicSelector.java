@@ -244,7 +244,11 @@ public final class MusicSelector extends MainState {
 			logger.warn("iidx2bms: 変換環境を利用できないためIIDX連携を無効にします: {}", projectRoot);
 			return;
 		}
-		final IIDXTempFileManager tempFiles = new IIDXTempFileManager();
+		// LDJ_Sources未設定時は従来どおりOS一時ディレクトリにフォールバックする
+		final String sourcesRoot = iidxConfig().getLDJ_Sources();
+		final IIDXTempFileManager tempFiles = (sourcesRoot == null || sourcesRoot.isEmpty())
+				? new IIDXTempFileManager()
+				: new IIDXTempFileManager(Paths.get(sourcesRoot));
 		if (!tempFiles.prepare()) {
 			logger.warn("iidx2bms: 作業ディレクトリを準備できないためIIDX連携を無効にします");
 			return;
