@@ -146,35 +146,6 @@ public class Config implements Validatable {
 	private String messagefontpath = "font/VL-Gothic-Regular.ttf";
 
 	/**
-	 * IIDX音声データのルートディレクトリ。空の場合はIIDX連携が無効
-	 */
-	private String iidxSoundPath = "";
-	/**
-	 * IIDXムービー(BGA)データのルートディレクトリ
-	 */
-	private String iidxMoviePath = "";
-	/**
-	 * iidx2bms (Python) のチェックアウトディレクトリ
-	 */
-	private String iidx2bmsPath = "";
-	/**
-	 * 変換結果をキャッシュするかどうか
-	 */
-	private boolean iidxCacheEnabled = true;
-	/**
-	 * 変換キャッシュの上限サイズ(MB)
-	 */
-	private int iidxCacheMaxSizeMB = 2048;
-	/**
-	 * 変換時にBGAを含めるかどうか
-	 */
-	private boolean iidxIncludeBGA = true;
-	/**
-	 * 変換時にプレビュー音声を含めるかどうか
-	 */
-	private boolean iidxIncludePreview = true;
-
-	/**
 	 * BMSルートディレクトリパス
 	 */
 	private String[] bmsroot = new String[0];
@@ -243,6 +214,39 @@ public class Config implements Validatable {
 	private int obsWsRecMode = 0;
 	private HashMap<String, String> obsScenes = new HashMap<>();
 	private HashMap<String, String> obsActions = new HashMap<>();
+
+	/**
+	 * LDJ音声データのルートディレクトリ。空の場合はLDJ連携が無効
+	 */
+	private String LDJ_SoundPath = "";
+	/**
+	 * LDJムービー(BGA)データのルートディレクトリ
+	 */
+	private String LDJ_MoviePath = "";
+	/**
+	 * LDJ変換ツール (iidx2bms) のチェックアウトディレクトリ
+	 */
+	private String LDJ_ToolPath = "";
+	/**
+	 * 変換結果をキャッシュするかどうか
+	 */
+	private boolean LDJ_CacheEnabled = true;
+	/**
+	 * 変換キャッシュの上限サイズ(MB)
+	 */
+	private int LDJ_CacheMaxSizeMB = 2048;
+	/**
+	 * 変換時にBGAを含めるかどうか
+	 */
+	private boolean LDJ_IncludeBGA = true;
+	/**
+	 * 変換時にプレビュー音声を含めるかどうか
+	 */
+	private boolean LDJ_IncludePreview = true;
+	/**
+	 * LDJ関連ファイル(cli/cache/session)の保存先ルート。空の場合はOS一時ディレクトリ
+	 */
+	private String LDJ_Sources = "";
 
 	/**
 	 * Bank of available tables
@@ -486,60 +490,68 @@ public class Config implements Validatable {
 		this.soundpath = soundpath;
 	}
 
-	public String getIidxSoundPath() {
-		return iidxSoundPath;
+	public String getLDJ_SoundPath() {
+		return LDJ_SoundPath;
 	}
 
-	public void setIidxSoundPath(String iidxSoundPath) {
-		this.iidxSoundPath = iidxSoundPath;
+	public void setLDJ_SoundPath(String LDJ_SoundPath) {
+		this.LDJ_SoundPath = LDJ_SoundPath;
 	}
 
-	public String getIidxMoviePath() {
-		return iidxMoviePath;
+	public String getLDJ_MoviePath() {
+		return LDJ_MoviePath;
 	}
 
-	public void setIidxMoviePath(String iidxMoviePath) {
-		this.iidxMoviePath = iidxMoviePath;
+	public void setLDJ_MoviePath(String LDJ_MoviePath) {
+		this.LDJ_MoviePath = LDJ_MoviePath;
 	}
 
-	public String getIidx2bmsPath() {
-		return iidx2bmsPath;
+	public String getLDJ_ToolPath() {
+		return LDJ_ToolPath;
 	}
 
-	public void setIidx2bmsPath(String iidx2bmsPath) {
-		this.iidx2bmsPath = iidx2bmsPath;
+	public void setLDJ_ToolPath(String LDJ_ToolPath) {
+		this.LDJ_ToolPath = LDJ_ToolPath;
 	}
 
-	public boolean isIidxCacheEnabled() {
-		return iidxCacheEnabled;
+	public boolean isLDJ_CacheEnabled() {
+		return LDJ_CacheEnabled;
 	}
 
-	public void setIidxCacheEnabled(boolean iidxCacheEnabled) {
-		this.iidxCacheEnabled = iidxCacheEnabled;
+	public void setLDJ_CacheEnabled(boolean LDJ_CacheEnabled) {
+		this.LDJ_CacheEnabled = LDJ_CacheEnabled;
 	}
 
-	public int getIidxCacheMaxSizeMB() {
-		return iidxCacheMaxSizeMB;
+	public int getLDJ_CacheMaxSizeMB() {
+		return LDJ_CacheMaxSizeMB;
 	}
 
-	public void setIidxCacheMaxSizeMB(int iidxCacheMaxSizeMB) {
-		this.iidxCacheMaxSizeMB = iidxCacheMaxSizeMB;
+	public void setLDJ_CacheMaxSizeMB(int LDJ_CacheMaxSizeMB) {
+		this.LDJ_CacheMaxSizeMB = LDJ_CacheMaxSizeMB;
 	}
 
-	public boolean isIidxIncludeBGA() {
-		return iidxIncludeBGA;
+	public boolean isLDJ_IncludeBGA() {
+		return LDJ_IncludeBGA;
 	}
 
-	public void setIidxIncludeBGA(boolean iidxIncludeBGA) {
-		this.iidxIncludeBGA = iidxIncludeBGA;
+	public void setLDJ_IncludeBGA(boolean LDJ_IncludeBGA) {
+		this.LDJ_IncludeBGA = LDJ_IncludeBGA;
 	}
 
-	public boolean isIidxIncludePreview() {
-		return iidxIncludePreview;
+	public boolean isLDJ_IncludePreview() {
+		return LDJ_IncludePreview;
 	}
 
-	public void setIidxIncludePreview(boolean iidxIncludePreview) {
-		this.iidxIncludePreview = iidxIncludePreview;
+	public void setLDJ_IncludePreview(boolean LDJ_IncludePreview) {
+		this.LDJ_IncludePreview = LDJ_IncludePreview;
+	}
+
+	public String getLDJ_Sources() {
+		return LDJ_Sources;
+	}
+
+	public void setLDJ_Sources(String LDJ_Sources) {
+		this.LDJ_Sources = LDJ_Sources;
 	}
 
 	public int getMaxSearchBarCount() {
@@ -957,21 +969,22 @@ public class Config implements Validatable {
 		skinpath = skinpath != null ? skinpath : SKINPATH_DEFAULT;
 		downloadDirectory = validatePath(downloadDirectory) ? downloadDirectory : DEFAULT_DOWNLOAD_DIRECTORY;
 
-		iidxSoundPath = iidxSoundPath != null ? iidxSoundPath.trim() : "";
-		iidxMoviePath = iidxMoviePath != null ? iidxMoviePath.trim() : "";
-		iidx2bmsPath = iidx2bmsPath != null ? iidx2bmsPath.trim() : "";
-		iidxCacheMaxSizeMB = MathUtils.clamp(iidxCacheMaxSizeMB, 0, 1024 * 1024);
-		if (!iidxSoundPath.isEmpty()) {
+		LDJ_SoundPath = LDJ_SoundPath != null ? LDJ_SoundPath.trim() : "";
+		LDJ_MoviePath = LDJ_MoviePath != null ? LDJ_MoviePath.trim() : "";
+		LDJ_ToolPath = LDJ_ToolPath != null ? LDJ_ToolPath.trim() : "";
+		LDJ_Sources = LDJ_Sources != null ? LDJ_Sources.trim() : "";
+		LDJ_CacheMaxSizeMB = MathUtils.clamp(LDJ_CacheMaxSizeMB, 0, 1024 * 1024);
+		if (!LDJ_SoundPath.isEmpty()) {
 			// 連携が有効な設定に限りパスの妥当性を検査する。ここで落とさず警告に留めるのは、
 			// 外付けドライブが未接続のまま起動した場合でも設定画面から修正できるようにするため。
-			if (!validateDirectory(iidxSoundPath)) {
-				logger.warn("IIDX sound path is not a directory: {}", iidxSoundPath);
+			if (!validateDirectory(LDJ_SoundPath)) {
+				logger.warn("IIDX sound path is not a directory: {}", LDJ_SoundPath);
 			}
-			if (!iidxMoviePath.isEmpty() && !validateDirectory(iidxMoviePath)) {
-				logger.warn("IIDX movie path is not a directory: {}", iidxMoviePath);
+			if (!LDJ_MoviePath.isEmpty() && !validateDirectory(LDJ_MoviePath)) {
+				logger.warn("IIDX movie path is not a directory: {}", LDJ_MoviePath);
 			}
-			if (iidx2bmsPath.isEmpty() || !Paths.get(iidx2bmsPath, "conversion", "conversion.py").toFile().isFile()) {
-				logger.warn("iidx2bms checkout is missing or invalid: {}", iidx2bmsPath);
+			if (LDJ_ToolPath.isEmpty() || !Paths.get(LDJ_ToolPath, "conversion", "conversion.py").toFile().isFile()) {
+				logger.warn("iidx2bms checkout is missing or invalid: {}", LDJ_ToolPath);
 			}
 		}
 		return true;

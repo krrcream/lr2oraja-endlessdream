@@ -235,7 +235,7 @@ public final class MusicSelector extends MainState {
 	 * 何もしない(選曲画面にIIDXフォルダを作らない)
 	 */
 	private void setupIIDXFolder() {
-		final String projectRoot = iidxConfig().getIidx2bmsPath();
+		final String projectRoot = iidxConfig().getLDJ_ToolPath();
 		if (projectRoot == null || projectRoot.isEmpty()) {
 			return;
 		}
@@ -262,10 +262,10 @@ public final class MusicSelector extends MainState {
 	private IIDXConversionService.Request newIIDXRequest(IIDXChartRef ref, Path outRoot) {
 		final Config iidx = iidxConfig();
 		final IIDXConversionService.Request request = new IIDXConversionService.Request(ref.getSongId(),
-				ref.getSongIdDisplay(), iidx.getIidx2bmsPath(), iidx.getIidxSoundPath(),
-				iidx.getIidxMoviePath(), outRoot);
-		request.includeBga = iidx.isIidxIncludeBGA();
-		request.includePreview = iidx.isIidxIncludePreview();
+				ref.getSongIdDisplay(), iidx.getLDJ_ToolPath(), iidx.getLDJ_SoundPath(),
+				iidx.getLDJ_MoviePath(), outRoot);
+		request.includeBga = iidx.isLDJ_IncludeBGA();
+		request.includePreview = iidx.isLDJ_IncludePreview();
 		return request;
 	}
 
@@ -339,7 +339,7 @@ public final class MusicSelector extends MainState {
 		IIDXConversionOverlay.show(ref.getSongIdDisplay());
 		ImGuiNotify.info("LDJ譜面を変換しています...");
 		// 変換スレッドから全体設定を読まないよう、UIスレッド側で値を確定させて渡す
-		final int cacheMaxSizeMB = iidxConfig().getIidxCacheMaxSizeMB();
+		final int cacheMaxSizeMB = iidxConfig().getLDJ_CacheMaxSizeMB();
 		final Thread thread = new Thread(
 				() -> runIIDXConversion(newIIDXRequest(ref, sessionDir), ref, sessionDir, cacheMaxSizeMB),
 				"iidx2bms-convert");
