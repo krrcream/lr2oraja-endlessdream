@@ -76,7 +76,7 @@ public class IIDXConversionOverlay {
 			return;
 		}
 		final int percent = Math.max(0, Math.min(100, progress));
-		final String label = title.isEmpty() ? "IIDX 変換" : title;
+		final String label = title.isEmpty() ? "LDJ 変換" : title;
 
 		ImGui.setNextWindowPos(windowWidth * 0.5f, windowHeight * 0.5f, ImGuiCond.Always, 0.5f, 0.5f);
 		ImGui.setNextWindowBgAlpha(0.9f);
@@ -85,7 +85,7 @@ public class IIDXConversionOverlay {
 						| ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse
 						| ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing
 						| ImGuiWindowFlags.NoNav);
-		ImGui.text("IIDX譜面を変換しています...");
+		ImGui.text("LDJ譜面を変換しています...");
 		ImGui.progressBar(percent / 100.0f, new ImVec2(WIDTH, 0.0f), percent + "%");
 		if (!stage.isEmpty()) {
 			ImGui.text(stage);

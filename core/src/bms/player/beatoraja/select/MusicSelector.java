@@ -252,7 +252,7 @@ public final class MusicSelector extends MainState {
 		iidxProvider = provider;
 		iidxTempFiles = tempFiles;
 		iidxConverter = new IIDXConversionService(tempFiles);
-		iidxBar = new IIDXFolderBar(this, "IIDX", provider.getSongBars(false), provider.getSongBars(true));
+		iidxBar = new IIDXFolderBar(this, "LDJ", provider.getSongBars(false), provider.getSongBars(true));
 		manager.setAppendDirectoryBar("iidx", iidxBar);
 	}
 
@@ -302,7 +302,7 @@ public final class MusicSelector extends MainState {
 		}
 		if (iidxThread != null && iidxThread.isAlive()) {
 			// 変換は同時に1件のみ。進行中の変換は中断しない(cancel()は呼ばない)
-			ImGuiNotify.info("IIDX譜面を変換中です。完了までお待ちください");
+			ImGuiNotify.info("LDJ譜面を変換中です。完了までお待ちください");
 			return false;
 		}
 		final IIDXChartRef ref = IIDXChartRef.parse(song.getPath());
@@ -326,7 +326,7 @@ public final class MusicSelector extends MainState {
 		try {
 			sessionDir = iidxTempFiles.createSessionDir(ref.getSongIdDisplay());
 		} catch (IOException e) {
-			ImGuiNotify.error("IIDX譜面の作業ディレクトリを作成できません: " + e.getMessage());
+			ImGuiNotify.error("LDJ譜面の作業ディレクトリを作成できません: " + e.getMessage());
 			return false;
 		}
 
@@ -337,7 +337,7 @@ public final class MusicSelector extends MainState {
 		iidxProgress = 0;
 		iidxStage = "変換を開始しています";
 		IIDXConversionOverlay.show(ref.getSongIdDisplay());
-		ImGuiNotify.info("IIDX譜面を変換しています...");
+		ImGuiNotify.info("LDJ譜面を変換しています...");
 		// 変換スレッドから全体設定を読まないよう、UIスレッド側で値を確定させて渡す
 		final int cacheMaxSizeMB = iidxConfig().getIidxCacheMaxSizeMB();
 		final Thread thread = new Thread(
@@ -420,7 +420,7 @@ public final class MusicSelector extends MainState {
 		} else if (error != null) {
 			ImGuiNotify.error(error);
 		} else if (result != null) {
-			ImGuiNotify.error("IIDX譜面の変換結果から譜面を読み込めませんでした: "
+			ImGuiNotify.error("LDJ譜面の変換結果から譜面を読み込めませんでした: "
 					+ (song != null ? song.getPath() : ""));
 		}
 	}

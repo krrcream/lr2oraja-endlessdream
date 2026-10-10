@@ -144,7 +144,7 @@ def main(argv: list[str]) -> int:
         emit({"type": "error", "message": f"not an iidx2bms checkout: {project_root}"})
         return 2
     if not sound_root.is_dir():
-        emit({"type": "error", "message": f"IIDX sound root not found: {sound_root}"})
+        emit({"type": "error", "message": f"LDJ sound root not found: {sound_root}"})
         return 2
 
     sys.path.insert(0, str(project_root))

@@ -203,7 +203,7 @@ public class IIDXConversionService {
 	 */
 	public Result convert(Request request, ProgressListener listener) throws ConversionException {
 		if (tempFiles.getBridgeScript() == null && !tempFiles.prepare()) {
-			throw new ConversionException("IIDX temporary directory is unavailable");
+			throw new ConversionException("LDJ temporary directory is unavailable");
 		}
 		List<String> interpreterCommand = resolveInterpreter(request);
 		if (interpreterCommand == null) {
