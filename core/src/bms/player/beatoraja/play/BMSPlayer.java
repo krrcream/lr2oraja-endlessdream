@@ -477,6 +477,8 @@ public class BMSPlayer extends MainState {
 		if (!score) {
 			ImGuiNotify.warning("Score nullifying options enabled. Next play will not be saved");
 		}
+		// LDJ(IIDX)由来の譜面はローカルに成績を残すがIRへは送信しない
+		forceNoIRSend |= resource.isFromIIDX();
 		if (forceNoIRSend) {
 			ImGuiNotify.error("Special mod options enabled. Next play will not be submitted to IR");
 		}

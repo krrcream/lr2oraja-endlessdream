@@ -418,8 +418,9 @@ public final class MusicSelector extends MainState {
 		if (applyIIDXResult(song, ref, result)) {
 			// 通常の読み込みフロー(resource.setBMSFile → DECIDE遷移)を迂回せず、同じ経路を通す。
 			// 直後のrender()のplay消費ブロックに二重に拾われないよう、読み込み後はplayを戻す
+			// パスはapplyIIDXResultで実BMSへ書き換え済みのため、LDJ由来であることを明示して渡す
 			play = mode;
-			readChart(song, bar);
+			readChart(song, bar, true);
 			play = null;
 		} else if (error != null) {
 			ImGuiNotify.error(error);
@@ -585,6 +586,14 @@ public final class MusicSelector extends MainState {
 	}
 
 	public void readChart(SongData song, Bar current) {
+		readChart(song, current, IIDXSongProvider.isIIDXPath(song.getPath()));
+	}
+
+	/**
+	 * @param fromIIDX LDJ(IIDX)由来の譜面として読み込むか。変換完了後の再読み込みでは、パスが
+	 *                実BMSへ書き換え済みでパスからは判定できないため、呼び出し元が明示する
+	 */
+	public void readChart(SongData song, Bar current, boolean fromIIDX) {
 		if (IIDXSongProvider.isIIDXPath(song.getPath())) {
 			if (!startIIDXConversion(song, current)) {
 				// 変換を開始した、または開始できなかった。完了時にrender()から読み直す
@@ -593,6 +602,7 @@ public final class MusicSelector extends MainState {
 			// キャッシュヒット。songのパスは実BMSファイルへ書き換え済みなので通常フローへ進む
 		}
 		resource.clear();
+		resource.setFromIIDX(fromIIDX);
 		if (resource.setBMSFile(Paths.get(song.getPath()), play)) {
 			// TODO 表名、フォルダ名をPlayerResource上でも重複実施している
 			final Queue<DirectoryBar> dir = manager.getDirectory();

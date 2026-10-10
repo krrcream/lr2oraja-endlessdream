@@ -134,6 +134,10 @@ public final class PlayerResource {
 	private boolean freqOn;
 	private String freqString;
 	private boolean forceNoIRSend;
+	/**
+	 * 今回読み込んだ譜面がLDJ(IIDX)由来かどうか。譜面を読み込むたびに設定され、clear()で解除される
+	 */
+	private boolean fromIIDX;
 	// Full list of difficult tables that contains current song
 	private List<String> reverseLookup = new ArrayList<>();
 
@@ -161,6 +165,7 @@ public final class PlayerResource {
 		combo = 0;
 		maxcombo = 0;
 		bmsPaths = null;
+		fromIIDX = false;
 		setTablename("");
 		setTablelevel("");
 	}
@@ -667,6 +672,14 @@ public final class PlayerResource {
 
 	public void setForceNoIRSend(boolean forceNoIRSend) {
 		this.forceNoIRSend = forceNoIRSend;
+	}
+
+	public boolean isFromIIDX() {
+		return fromIIDX;
+	}
+
+	public void setFromIIDX(boolean fromIIDX) {
+		this.fromIIDX = fromIIDX;
 	}
 
 	public Future<BMSLoudnessAnalyzer.AnalysisResult> getAnalysisTask() {
