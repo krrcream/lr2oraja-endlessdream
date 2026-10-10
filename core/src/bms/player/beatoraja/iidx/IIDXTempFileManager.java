@@ -34,7 +34,7 @@ public class IIDXTempFileManager {
 	private static final String CLI_DIR_NAME = "cli";
 	private static final String CACHE_DIR_NAME = "cache";
 	private static final String SESSION_DIR_NAME = "session";
-	private static final String BRIDGE_RESOURCE = "iidx2bms/cli_convert.py";
+	private static final String BRIDGE_RESOURCE = "resources/iidx2bms/cli_convert.py";
 	private static final String BRIDGE_FILE_NAME = "cli_convert.py";
 
 	private final Path baseDir;
