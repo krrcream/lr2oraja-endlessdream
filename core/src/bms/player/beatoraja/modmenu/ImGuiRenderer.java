@@ -42,6 +42,7 @@ public class ImGuiRenderer {
     private static ImBoolean SHOW_RANDOM_TRAINER = new ImBoolean(false);
     private static ImBoolean SHOW_FREQ_PLUS = new ImBoolean(false);
     private static ImBoolean SHOW_JUDGE_TRAINER = new ImBoolean(false);
+    private static ImBoolean SHOW_GAUGE_TRAINER = new ImBoolean(false);
     private static ImBoolean SHOW_SONG_MANAGER = new ImBoolean(false);
     private static ImBoolean SHOW_DOWNLOAD_MENU = new ImBoolean(false);
     private static ImBoolean SHOW_SKIN_WIDGET_MANAGER = new ImBoolean(false);
@@ -116,6 +117,7 @@ public class ImGuiRenderer {
             ImGui.checkbox("Show Rate Modifier Window", SHOW_FREQ_PLUS);
             ImGui.checkbox("Show Random Trainer Window", SHOW_RANDOM_TRAINER);
             ImGui.checkbox("Show Judge Trainer Window", SHOW_JUDGE_TRAINER);
+            ImGui.checkbox("Show Gauge Trainer Window", SHOW_GAUGE_TRAINER);
             if (ImGui.checkbox("Show Skin Configuration Window", SHOW_SKIN_MENU)) { SkinMenu.invalidate(); }
             ImGui.checkbox("Show Skin Widget Manager Window", SHOW_SKIN_WIDGET_MANAGER);
             ImGui.checkbox("Show Song Manager Window", SHOW_SONG_MANAGER);
@@ -134,6 +136,9 @@ public class ImGuiRenderer {
             }
             if (SHOW_JUDGE_TRAINER.get()) {
                 JudgeTrainerMenu.show(SHOW_JUDGE_TRAINER);
+            }
+            if (SHOW_GAUGE_TRAINER.get()) {
+                GaugeTrainerMenu.show(SHOW_GAUGE_TRAINER);
             }
             if (SHOW_SONG_MANAGER.get()) {
                 SongManagerMenu.show(SHOW_SONG_MANAGER);

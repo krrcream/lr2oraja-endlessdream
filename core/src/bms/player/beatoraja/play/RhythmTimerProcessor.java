@@ -57,23 +57,23 @@ public class RhythmTimerProcessor {
 
 	}
 	
-	public void update(BMSPlayer player, long deltatime, double nowbpm, int freq) {
+	public void update(BMSPlayer player, long deltatime, double nowbpm, float freq) {
 		final long now = player.timer.getNowTime();
 		final long micronow = player.timer.getNowMicroTime();
 
 		rhythmtimer += deltatime * (100 - nowbpm * player.getPlaySpeed() / 60) / 100;
 		player.timer.setMicroTimer(TIMER_RHYTHM, rhythmtimer);
 
-		if(sections < sectiontimes.length && (sectiontimes[sections] * (100 / freq)) <= player.timer.getNowMicroTime(TIMER_PLAY)) {
+		if(sections < sectiontimes.length && (sectiontimes[sections] * (100.0 / freq)) <= player.timer.getNowMicroTime(TIMER_PLAY)) {
 			sections++;;
 			player.timer.setTimerOn(TIMER_RHYTHM);
 			rhythmtimer = micronow;
 		}
 		if(quarterNoteTimes.length > 0) {
-			if(quarterNote < quarterNoteTimes.length && (quarterNoteTimes[quarterNote] * (100 / freq)) <= player.timer.getNowMicroTime(TIMER_PLAY)) {
+			if(quarterNote < quarterNoteTimes.length && (quarterNoteTimes[quarterNote] * (100.0 / freq)) <= player.timer.getNowMicroTime(TIMER_PLAY)) {
 				quarterNote++;
 				nowQuarterNoteTime = now;
-			} else if(quarterNote == quarterNoteTimes.length && ((nowQuarterNoteTime + 60000 / nowbpm) * (100 / freq)) <= now)  {
+			} else if(quarterNote == quarterNoteTimes.length && ((nowQuarterNoteTime + 60000 / nowbpm) * (100.0 / freq)) <= now)  {
 				nowQuarterNoteTime = now;
 			}
 		}
