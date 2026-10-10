@@ -21,6 +21,7 @@ import bms.player.beatoraja.*;
 import bms.player.beatoraja.Config.SongPreview;
 import bms.player.beatoraja.ScoreDatabaseAccessor.ScoreDataCollector;
 import bms.player.beatoraja.iidx.IIDXChartRef;
+import bms.player.beatoraja.iidx.IIDXConversionOverlay;
 import bms.player.beatoraja.iidx.IIDXConversionService;
 import bms.player.beatoraja.iidx.IIDXSongProvider;
 import bms.player.beatoraja.iidx.IIDXTempFileManager;
@@ -335,6 +336,7 @@ public final class MusicSelector extends MainState {
 		iidxProceedRead = true;
 		iidxProgress = 0;
 		iidxStage = "変換を開始しています";
+		IIDXConversionOverlay.show(ref.getSongIdDisplay());
 		ImGuiNotify.info("IIDX譜面を変換しています...");
 		// 変換スレッドから全体設定を読まないよう、UIスレッド側で値を確定させて渡す
 		final int cacheMaxSizeMB = iidxConfig().getIidxCacheMaxSizeMB();
@@ -359,6 +361,7 @@ public final class MusicSelector extends MainState {
 						public void onProgress(int percent, String stage) {
 							iidxProgress = percent;
 							iidxStage = stage != null ? stage : "";
+							IIDXConversionOverlay.update(percent, iidxStage);
 						}
 
 						@Override
@@ -373,6 +376,7 @@ public final class MusicSelector extends MainState {
 					result.genre, result.songIdDisplay);
 			iidxStage = "変換完了";
 			iidxProgress = 100;
+			IIDXConversionOverlay.update(100, "変換完了");
 		} catch (IIDXConversionService.ConversionException e) {
 			iidxTempFiles.discardSessionDir(sessionDir);
 			iidxError = e.getMessage();
@@ -404,6 +408,7 @@ public final class MusicSelector extends MainState {
 		iidxMode = null;
 		iidxProgress = -1;
 		iidxStage = "";
+		IIDXConversionOverlay.hide();
 
 		final IIDXChartRef ref = song != null ? IIDXChartRef.parse(song.getPath()) : null;
 		if (applyIIDXResult(song, ref, result)) {

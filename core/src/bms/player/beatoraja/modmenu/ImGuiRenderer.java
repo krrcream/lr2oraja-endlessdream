@@ -2,6 +2,7 @@ package bms.player.beatoraja.modmenu;
 
 import bms.player.beatoraja.Version;
 import bms.player.beatoraja.controller.Lwjgl3ControllerManager;
+import bms.player.beatoraja.iidx.IIDXConversionOverlay;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
@@ -172,6 +173,7 @@ public class ImGuiRenderer {
         }
 
         ImGuiNotify.renderNotifications();
+        IIDXConversionOverlay.render();
     }
 
 
