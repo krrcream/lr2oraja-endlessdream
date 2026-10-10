@@ -256,7 +256,7 @@ public final class MusicSelector extends MainState {
 		iidxProvider = provider;
 		iidxTempFiles = tempFiles;
 		iidxConverter = new IIDXConversionService(tempFiles);
-		iidxBar = new IIDXFolderBar(this, "LDJ", provider.getSongBars(false), provider.getSongBars(true));
+		iidxBar = new IIDXFolderBar(this, provider.getSongBars(false), provider.getSongBars(true));
 		manager.setAppendDirectoryBar("iidx", iidxBar);
 	}
 
