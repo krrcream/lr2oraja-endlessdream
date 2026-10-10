@@ -1,11 +1,11 @@
 ---
-summary: lr2oraja IIDX 集成 Step 6 完成——MusicSelector 现场转换接入并提交 e0147274
+summary: IIDX集成Step6完成
 created: 2026-10-10 16:59
-updated: 2026-10-10 16:59
-status: active
+updated: 2026-10-10 21:27
+status: absorbed
 ---
 
-# 交接快照:IIDX 集成 Step 6
+# 交接快照:IIDX集成Step6完成
 
 ## Summary
 

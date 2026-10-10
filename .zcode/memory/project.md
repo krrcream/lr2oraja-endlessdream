@@ -21,6 +21,7 @@ lr2oraja-endlessdream(beatoraja 的 fork)上集成 beatmania IIDX 支持:把 IID
 
 ## 进行中
 
-- [2026-10-10] IIDX 集成 Step 6(在 MusicSelector 里接上现场转换) | 已完成并提交 e0147274 | 无卡点
-- [2026-10-10] IIDX 集成 Step 7(IIDXConversionOverlay 进度浮层) | 未开始 | 无
-- [2026-10-10] IIDX 集成 Step 8(整包构建 + 真机联测) | 未开始 | 无
+- [2026-10-10] IIDX/LDJ 集成主体 | 已完成(Step 6 e0147274 起全部落地,含进度浮层 63000df4、LDJ 化 d6c63a1d/4f67eabe/97eee93b/037d7350) | 无卡点
+- [2026-10-10] LDJ 需求①进 LDJ 目录不上传 IR 但本地点灯记成绩 | 方案定案 + 锚点已核实,待改代码 | 走 `PlayerResource.fromIIDX` OR 进 `play/BMSPlayer.java:487` 前的 `forceNoIRSend`
+- [2026-10-10] LDJ 需求②难度名区分 SP/DP | 方案定案 + 锚点已核实,待改代码 | 在 `iidx/IIDXSongProvider.java:150` 标题加 `[SP]`/`[DP]` 前缀
+- [2026-10-10] LDJ 需求③目录内按 ☆ 分 24 张表(SP/DP 各 12) | 方案定案 + 锚点已核实,待改代码 | 需把 `IIDXFolderBar` 重塑为 `FolderBar` 子类(当前 value=-1 不可见)并 `setSortable(false)`,要重编译

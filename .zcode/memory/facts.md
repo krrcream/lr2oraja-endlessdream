@@ -27,3 +27,7 @@ status: active
 - [2026-10-10] 编译验证:`./gradlew -Dplatform=windows -I /d/jdkfx/fx-init.gradle core:compileJava`(在仓库根执行;Step 6 通过,BUILD SUCCESSFUL)。
 - [2026-10-10] 查状态:`git branch --show-current; git log --oneline -3; git status --porcelain`
 - [2026-10-10] 提交规范:`feat(iidx): ...` / `chore(memory): ...` 英文 Conventional Commits(与 41e7693b、f30d1319 等一致)。
+- [2026-10-10] 工具链:Gradle 9.3.1 daemon,项目 toolchain JDK 17,Python 3.13.7;JavaFX 非 gradle 依赖 ⇒ **每次** gradle 调用都要 `-I /d/jdkfx/fx-init.gradle`。
+- [2026-10-10] 打包产物:`dist/lr2oraja-0.8.8-endlessdream-windows-pre0.4.1.jar`,Main-Class `bms.player.beatoraja.MainLoader`。
+- [2026-10-10] 配置序列化:libGDX `com.badlogic.gdx.utils.Json` 反射序列化,**JSON 键名 == Java 字段名**,声明顺序==序列化顺序,`write()` 整文件回写 ⇒ 手改磁盘不生效 ⇒ 改字段名要先改 Java 再启动游戏(97eee93b 把 LDJ_* 字段沉到 Config.java 末尾即因此)。
+- [2026-10-10] `Mode.BEAT_7K`=SP、`Mode.BEAT_14K`=DP。

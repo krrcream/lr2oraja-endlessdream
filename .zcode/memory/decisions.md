@@ -16,3 +16,7 @@ status: active
 - [2026-10-10] **完成后在 UI 线程 `play = mode; readChart(...); play = null;`** — 让 render() 轮询块位于 `if (play != null)` 之前,避免同一帧被消费两次。
 - [2026-10-10] **谱面用虚拟伪路径 `iidx://<songId>/<difficulty>`** — 在 `resource.clear();` 之前拦截,命中缓存直接重写 SongData 路径,否则启动转换。
 - [2026-10-10] **一步一提交,提交前必须编译通过** — 用户工作流要求。
+- [2026-10-10] **需求①(进 LDJ 不上传 IR)走 `PlayerResource.fromIIDX` 显式瞬态标志** — 镜像 `BMSModel.fromOSU`,在 MusicSelector 启动转换处置位、在 `play/BMSPlayer` 里 OR 进本地 `forceNoIRSend` 后再 `setForceNoIRSend`;否掉两条路:(a) 用路径含 `lr2oraja_iidx` 判 IIDX 谱,(b) 在 BMSPlayer 里查 `isIIDXPath(song.getPath())`(缓存命中时 `applyIIDXResult` 会把路径改写成真实 BMS 文件,判不准)。
+- [2026-10-10] **需求②用 `[SP]`/`[DP]` 方括号前缀改 LDJ 曲目标题** — 只动 `IIDXSongProvider.createSongData` 的 `song.setTitle`;否掉改全局 StringPropertyFactory(会波及全库标题)。
+- [2026-10-10] **需求③在 LDJ 虚拟目录内按 ☆ 分表** — 只改 LDJ;否掉改全库 `folder/default.json` 的 LEVEL 分组。
+- [2026-10-10] **LDJ 目录栏一律改继承 `FolderBar`(借 value=1 可见性),标题用合成 `FolderData` 提供** — 因 `FolderBar.getTitle()` 是 `public final` 改不了;`DirectoryBar.isSortable` 默认 true 且作用于整层子项 ⇒ LDJ 父栏与每个 ☆ 子栏都要 `setSortable(false)`。
