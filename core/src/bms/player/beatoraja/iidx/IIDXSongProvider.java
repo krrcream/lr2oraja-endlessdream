@@ -147,7 +147,8 @@ public class IIDXSongProvider {
 		SongData song = new SongData();
 		String path = new IIDXChartRef(meta.getSongId(), difficulty).getPath();
 		song.setPath(path);
-		song.setTitle(meta.getTitle());
+		// SP/DPは難易度名からも判別できるようにするが、選曲・リザルトでは楽曲名しか出ないため接頭辞で補う
+		song.setTitle("[" + (difficulty.isDoublePlay() ? "DP" : "SP") + "] " + meta.getTitle());
 		// getFullTitle() は subtitle が null だと落ちるため明示的に空を入れる
 		song.setSubtitle("");
 		song.setArtist(meta.getArtist() == null ? "" : meta.getArtist());
