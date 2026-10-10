@@ -1,7 +1,7 @@
 ---
 summary: 已拍板的决策与理由,append-only
 created: 2026-10-10 16:59
-updated: 2026-10-10 16:59
+updated: 2026-10-10 22:40
 status: active
 ---
 
@@ -20,3 +20,6 @@ status: active
 - [2026-10-10] **需求②用 `[SP]`/`[DP]` 方括号前缀改 LDJ 曲目标题** — 只动 `IIDXSongProvider.createSongData` 的 `song.setTitle`;否掉改全局 StringPropertyFactory(会波及全库标题)。
 - [2026-10-10] **需求③在 LDJ 虚拟目录内按 ☆ 分表** — 只改 LDJ;否掉改全库 `folder/default.json` 的 LEVEL 分组。
 - [2026-10-10] **LDJ 目录栏一律改继承 `FolderBar`(借 value=1 可见性),标题用合成 `FolderData` 提供** — 因 `FolderBar.getTitle()` 是 `public final` 改不了;`DirectoryBar.isSortable` 默认 true 且作用于整层子项 ⇒ LDJ 父栏与每个 ☆ 子栏都要 `setSortable(false)`。
+- [2026-10-10] **iidx2bms 分流靠分支:上游同步留 `main`,精简只落 `orajaroot`** — 用户指定;`main` 保持纯同步上游(Glebsin),自有精简分支 `orajaroot` 承载 GUI 剥离后的最小文件集。
+- [2026-10-10] **iidx2bms remote 命名沿用 lr2oraja 惯例:`origin`=上游 Glebsin、`fork`=krrcream** — 与 lr2oraja 仓库一致,便于记忆与脚本统一;当前 checkout 只有 `origin=Glebsin`,需先 `git remote add` 补 krrcream。
+- [2026-10-10] **删除 GUI 的依据:lr2oraja 不依赖 iidx2bms 的 GUI/`main.py`** — lr2oraja 自带桥接 `core/src/resources/iidx2bms/cli_convert.py`(jar 资源,运行时解出),只 import `conversion.conversion.convert_chart` 与 `search_engine.search_engine.SearchEngine` ⇒ `gui/`、`window/`、`main.py` 属删除候选。

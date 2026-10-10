@@ -1,8 +1,8 @@
 ---
 summary: LDJ三项需求方案与代码锚点已核实
 created: 2026-10-10 21:27
-updated: 2026-10-10 21:27
-status: active
+updated: 2026-10-10 22:40
+status: absorbed
 ---
 
 # 交接快照:LDJ 三项需求方案与代码锚点已核实

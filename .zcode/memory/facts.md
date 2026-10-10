@@ -1,7 +1,7 @@
 ---
 summary: 环境约束、关键路径与可复用命令
 created: 2026-10-10 16:59
-updated: 2026-10-10 16:59
+updated: 2026-10-10 22:40
 status: active
 ---
 
@@ -18,9 +18,14 @@ status: active
 ## 路径与位置
 
 - [2026-10-10] 仓库根:`D:\lr2oraja k\lr2oraja-endlessdream`
-- [2026-10-10] 只读参考:`D:\iidx2bms-src\iidx2bms`(禁止修改,不要用打包 EXE)
 - [2026-10-10] 记忆库:仓库根 `.zcode/memory/`(本会话初始化)
-- [2026-10-10] 相关文件:`core/src/bms/player/beatoraja/select/MusicSelector.java`、`core/src/bms/player/beatoraja/iidx/*`、`core/src/bms/player/beatoraja/Config.java`
+- [2026-10-10] iidx2bms 后端源码 checkout:`D:\iidx2bms-src\iidx2bms`(git 根是 `D:\iidx2bms-src`,tracked 文件全在 `iidx2bms/` 前缀下);**不要用打包好的 EXE(连调试也不用)**。
+- [2026-10-10] 相关文件:`core/src/bms/player/beatoraja/select/MusicSelector.java`、`core/src/bms/player/beatoraja/iidx/*`、`core/src/bms/player/beatoraja/select/bar/IIDXFolderBar.java`、`IIDXStarFolderBar.java`、`core/src/bms/player/beatoraja/Config.java`
+
+## iidx2bms 仓库(下一窗口任务相关)
+
+- [2026-10-10] 上游 `https://github.com/Glebsin/iidx2bms`,用户 fork `https://github.com/krrcream/iidx2bms`。实测 checkout:`HEAD=33c0766 "Update README.md"`,branch `main`,tracked=60,remote 目前**仅** `origin=https://github.com/Glebsin/iidx2bms.git`(fetch+push),另有 `origin/main`、`origin/resources`;尚无 krrcream remote。
+- [2026-10-10] 桥接只依赖 `conversion/`、`search_engine/` 与 `music_data/music_data.json`(及三个 exe);`conversion.py`/`search_engine.py` 的 import 闭包实测仅 stdlib + pip 包 `ifstools` + `search_engine.game_names`。
 
 ## 命令与操作
 
