@@ -585,7 +585,8 @@ public final class MusicSelector extends MainState {
 	}
 
 	public void readChart(SongData song, Bar current) {
-		readChart(song, current, IIDXSongProvider.isIIDXPath(song.getPath()));
+		// 変換済みのLDJ譜面はパスが実BMSへ書き換わっているため、仮想スコアキーの有無でも判定する
+		readChart(song, current, IIDXSongProvider.isIIDXPath(song.getPath()) || song.isIIDXChart());
 	}
 
 	/**
@@ -594,6 +595,9 @@ public final class MusicSelector extends MainState {
 	 */
 	public void readChart(SongData song, Bar current, boolean fromIIDX) {
 		if (IIDXSongProvider.isIIDXPath(song.getPath())) {
+			// 変換でパスが実ファイルへ書き換わっても仮想スコアキーを失わないよう、ここで固定する。
+			// キャッシュヒット時はstartIIDXConversion内で同期的にパスが書き換わるため、その前に呼ぶ必要がある
+			song.setIIDXScoreKey(song.getSha256());
 			if (!startIIDXConversion(song, current)) {
 				// 変換を開始した、または開始できなかった。完了時にrender()から読み直す
 				return;
