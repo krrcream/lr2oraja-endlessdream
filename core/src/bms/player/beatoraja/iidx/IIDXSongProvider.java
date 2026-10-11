@@ -156,7 +156,10 @@ public class IIDXSongProvider {
 		song.setDifficulty(difficulty.getBmsDifficulty());
 		song.setMode(difficulty.getMode().id);
 		song.setMd5(placeholderHash(path, 32));
-		song.setSha256(placeholderHash(path, 64));
+		String scoreKey = placeholderHash(path, 64);
+		song.setSha256(scoreKey);
+		// 変換でパスが実ファイルへ書き換わってもLDJ由来だと分かるよう、生成時点でスコアキーを確定する
+		song.setIIDXScoreKey(scoreKey);
 		return song;
 	}
 
