@@ -477,8 +477,10 @@ public class BMSPlayer extends MainState {
 		if (!score) {
 			ImGuiNotify.warning("Score nullifying options enabled. Next play will not be saved");
 		}
-		// LDJ(IIDX)由来の譜面はローカルに成績を残すがIRへは送信しない
-		forceNoIRSend |= resource.isFromIIDX();
+		// LDJ(IIDX)由来の譜面はローカルに成績を残すがIRへは送信しない。
+		// 変換後はパスからLDJ由来と判定できないため、SongDataが持つ仮想スコアキーでも判定する
+		forceNoIRSend |= resource.isFromIIDX()
+				|| (resource.getSongdata() != null && resource.getSongdata().isIIDXChart());
 		if (forceNoIRSend) {
 			ImGuiNotify.error("Special mod options enabled. Next play will not be submitted to IR");
 		}
