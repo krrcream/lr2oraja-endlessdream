@@ -216,10 +216,22 @@ public final class PlayerResource {
 		return loadBMSModel(song, lnmode, null);
 	}
 
+	/**
+	 * LDJ(IIDX)譜面のスコアは仮想ハッシュ(iidx://由来)で読み書きするため、譜面モデルにも同じキーを載せる。
+	 * これがないと保存側(model.getSHA256())が変換後ファイルの内容ハッシュになり、読み出し側と食い違う
+	 */
+	private BMSModel applyScoreKey(SongData song, BMSModel model) {
+		if (model != null && song.isIIDXChart()) {
+			model.setMD5(song.getMd5());
+			model.setSHA256(song.getSha256());
+		}
+		return model;
+	}
+
 	public BMSModel loadBMSModel(SongData song, int lnmode, int[] selectedRandom) {
 		if(song == null) return null;
 		Path path = song.filesystemPath().orElse(null);
-		if(path != null) return loadBMSModel(new ChartInformation(path, lnmode, selectedRandom));
+		if(path != null) return applyScoreKey(song, loadBMSModel(new ChartInformation(path, lnmode, selectedRandom)));
 		String filename = song.chartFilename();
 		if(filename == null) return null;
 		ChartDecoder decoder = ChartDecoder.getDecoder(Path.of(filename));
@@ -237,7 +249,7 @@ public final class PlayerResource {
 			} else {
 				return null;
 			}
-			return prepareModel(model, decoder);
+			return applyScoreKey(song, prepareModel(model, decoder));
 		} catch (Exception error) {
 			logger.warn("Failed to decode {}: {}", filename, error.getMessage());
 			return null;
