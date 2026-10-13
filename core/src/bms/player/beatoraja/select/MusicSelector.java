@@ -143,7 +143,7 @@ public final class MusicSelector extends MainState {
 		scorecache = new ScoreDataCache() {
 			@Override
 			protected ScoreData readScoreDatasFromSource(SongData song, int lnmode) {
-				return pda.readScoreData(song.getSha256(), song.hasUndefinedLongNote(), lnmode);
+				return pda.readScoreData(song.getSha256(), song.hasUndefinedLongNote(), lnmode, song.isIIDXChart());
 			}
 
 			@Override

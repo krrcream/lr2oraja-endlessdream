@@ -192,17 +192,57 @@ public final class PlayDataAccessor {
 	 * @return スコアデータ
 	 */
 	public ScoreData readScoreData(String hash, boolean ln, int lnmode) {
-		return scoredb.getScoreData(hash, ln ? lnmode : 0);
+		return readScoreData(hash, ln, lnmode, false);
 	}
 
 	/**
-	 * スコアデータをまとめて読み込み、collectorに渡す
+	 * スコアデータを読み込む。LDJ(IIDX)譜面の場合は ldjscore.db から読む
+	 *
+	 * @param hash
+	 *            楽曲のハッシュ値(LDJ譜面の場合は iidx:// 由来の仮想ハッシュ)
+	 * @param ln
+	 *            対象のbmsが未定義LNを含む場合はtrueを入れる
+	 * @param lnmode
+	 *            LNモード
+	 * @param ldj
+	 *            LDJ(IIDX)譜面の場合はtrue
+	 * @return スコアデータ
+	 */
+	public ScoreData readScoreData(String hash, boolean ln, int lnmode, boolean ldj) {
+		return (ldj ? ldjscoredb : scoredb).getScoreData(hash, ln ? lnmode : 0);
+	}
+
+	/**
+	 * スコアデータをまとめて読み込み、collectorに渡す。
+	 * LDJ(IIDX)譜面は ldjscore.db から、それ以外は score.db から読む。
 	 * @param collector スコアデータのcollector
 	 * @param songs 楽曲データ
 	 * @param lnmode LNモード
 	 */
 	public void readScoreDatas(ScoreDataCollector collector, SongData[] songs, int lnmode) {
-		scoredb.getScoreDatas(collector, songs, lnmode);
+		List<SongData> ldjsongs = null;
+		for (SongData song : songs) {
+			if (song.isIIDXChart()) {
+				if (ldjsongs == null) {
+					ldjsongs = new ArrayList<SongData>();
+				}
+				ldjsongs.add(song);
+			}
+		}
+		if (ldjsongs == null) {
+			scoredb.getScoreDatas(collector, songs, lnmode);
+			return;
+		}
+		if (ldjsongs.size() < songs.length) {
+			List<SongData> others = new ArrayList<SongData>(songs.length - ldjsongs.size());
+			for (SongData song : songs) {
+				if (!song.isIIDXChart()) {
+					others.add(song);
+				}
+			}
+			scoredb.getScoreDatas(collector, others.toArray(new SongData[others.size()]), lnmode);
+		}
+		ldjscoredb.getScoreDatas(collector, ldjsongs.toArray(new SongData[ldjsongs.size()]), lnmode);
 	}
 
 	public List<ScoreData> readScoreDatas(String sql) {
