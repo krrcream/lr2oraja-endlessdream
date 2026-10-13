@@ -629,6 +629,35 @@ public final class MusicSelector extends MainState {
 				}
 			}
 			
+			// LDJ難易度表の譜面は、表名・フォルダ名・譜面ラベルを" | "で繋いでtablefullname(1003)へ流す。
+			// 上のdirループはSameFolderBarで素通りするため、その外側で判定する
+			String ldjTable = null;
+			String ldjGroup = null;
+			for (DirectoryBar bar : dir) {
+				if (bar instanceof LDJTableFileBar) {
+					ldjTable = bar.getTitle();
+				} else if (bar instanceof LDJTableGroupBar) {
+					ldjGroup = bar.getTitle();
+				}
+			}
+			if (ldjTable != null) {
+				String ldjtablefull = "";
+				// ラベルはSongBarのSongDataに載っている。resource.setBMSFileで実BMSを読み直すため併せてここで取る
+				for (String part : new String[] { ldjTable, ldjGroup, song.getSubtitle() }) {
+					if (part == null || part.isEmpty()) {
+						continue;
+					}
+					if (ldjtablefull.length() > 0) {
+						ldjtablefull += " | ";
+					}
+					ldjtablefull += part;
+				}
+				if (ldjtablefull.length() > 0) {
+					resource.setTablelevel("");
+					resource.setTablename(ldjtablefull);
+				}
+			}
+			
 			if(main.getIRStatus().length > 0 && currentir == null) {
 				currentir = new RankingData();
 				main.getRankingDataCache().put(song, config.getLnmode(), currentir);
