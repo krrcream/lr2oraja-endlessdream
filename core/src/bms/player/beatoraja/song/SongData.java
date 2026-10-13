@@ -68,9 +68,9 @@ public class SongData implements Validatable, IpfsInformation {
 	private String md5 = "";
 	private String sha256 = "";
 	/**
-	 * LDJ(IIDX)譜面の仮想スコアキー。iidx:// から作った仮ハッシュ。null なら通常譜面
+	 * LDJ譜面の仮想スコアキー。iidx:// から作った仮ハッシュ。null なら通常譜面
 	 */
-	private String iidxSha256;
+	private String ldjSha256;
 	private String url;
 	private String appendurl;
 	private String ipfs;
@@ -146,10 +146,10 @@ public class SongData implements Validatable, IpfsInformation {
 		setArtist(model.getArtist());
 		setSubartist(model.getSubArtist());
 		path.add(model.getPath());
-		if (isIIDXChart()) {
-			// LDJ(IIDX)譜面のスコアは iidx:// 由来の仮想ハッシュで引くため、
+		if (isLDJChart()) {
+			// LDJ譜面のスコアは iidx:// 由来の仮想ハッシュで引くため、
 			// 変換後ファイルの内容ハッシュで上書きすると二度と読めなくなる
-			sha256 = iidxSha256;
+			sha256 = ldjSha256;
 		} else {
 			md5 = model.getMD5();
 			sha256 = model.getSHA256();
@@ -439,17 +439,17 @@ public class SongData implements Validatable, IpfsInformation {
 		this.sha256 = sha256;
 	}
 	/**
-	 * LDJ(IIDX)譜面のスコアキーを仮想ハッシュへ固定する。
+	 * LDJ譜面のスコアキーを仮想ハッシュへ固定する。
 	 * iidx:// のパスが実ファイルへ書き換わる前に呼ぶこと。
 	 */
-	public void setIIDXScoreKey(String sha256) {
-		this.iidxSha256 = sha256;
+	public void setLDJScoreKey(String sha256) {
+		this.ldjSha256 = sha256;
 	}
 	/**
-	 * この譜面が LDJ(IIDX)由来か。真なら sha256 は実ファイルの内容ハッシュではなく仮想ハッシュ。
+	 * この譜面が LDJ由来か。真なら sha256 は実ファイルの内容ハッシュではなく仮想ハッシュ。
 	 */
-	public boolean isIIDXChart() {
-		return iidxSha256 != null && !iidxSha256.isEmpty();
+	public boolean isLDJChart() {
+		return ldjSha256 != null && !ldjSha256.isEmpty();
 	}
 	public int getFeature() {
 		return feature;

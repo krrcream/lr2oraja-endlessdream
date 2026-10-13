@@ -1,4 +1,4 @@
-package bms.player.beatoraja.iidx;
+package bms.player.beatoraja.ldj;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -20,16 +20,16 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 
 /**
- * iidx2bmsへのブリッジスクリプト({@code cli_convert.py})を起動してIIDX譜面をBMSへ変換する。
+ * iidx2bmsへのブリッジスクリプト({@code cli_convert.py})を起動してLDJ譜面をBMSへ変換する。
  *
  * <p>スクリプトは1行1JSONで進捗と結果をstdoutへ出力する。コンバータ本体のログはstderrへ
  * 流れるため、JSONとして解釈できない行は単に読み飛ばす。</p>
  *
  * @author endlessdream
  */
-public class IIDXConversionService {
+public class LDJConversionService {
 
-	private static final Logger logger = LoggerFactory.getLogger(IIDXConversionService.class);
+	private static final Logger logger = LoggerFactory.getLogger(LDJConversionService.class);
 
 	private static final Logger converterLogger = LoggerFactory.getLogger("iidx2bms");
 
@@ -39,7 +39,7 @@ public class IIDXConversionService {
 	/** 変換結果ディレクトリへ書き出されるマニフェストのファイル名 */
 	public static final String MANIFEST_FILE = "manifest.json";
 
-	private final IIDXTempFileManager tempFiles;
+	private final LDJTempFileManager tempFiles;
 
 	/** 使用するPythonインタプリタの起動コマンド(例: ["py", "-3"])。未検出ならnull */
 	private List<String> interpreter;
@@ -50,7 +50,7 @@ public class IIDXConversionService {
 	private volatile Process currentProcess;
 	private volatile boolean cancelled;
 
-	public IIDXConversionService(IIDXTempFileManager tempFiles) {
+	public LDJConversionService(LDJTempFileManager tempFiles) {
 		this.tempFiles = tempFiles;
 	}
 

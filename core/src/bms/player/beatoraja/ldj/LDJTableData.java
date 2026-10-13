@@ -1,10 +1,10 @@
-package bms.player.beatoraja.iidx;
+package bms.player.beatoraja.ldj;
 
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
-import bms.player.beatoraja.iidx.IIDXChartRef.Difficulty;
+import bms.player.beatoraja.ldj.LDJChartRef.Difficulty;
 
 /**
  * iidx-pro-difficulty-table 形式(json)の難易度表1ファイル分の内容。
@@ -16,7 +16,7 @@ import bms.player.beatoraja.iidx.IIDXChartRef.Difficulty;
  *
  * @author endlessdream
  */
-public final class IIDXTableData {
+public final class LDJTableData {
 
 	private final Path source;
 
@@ -28,7 +28,7 @@ public final class IIDXTableData {
 
 	private final List<Group> groups;
 
-	public IIDXTableData(Path source, String title, String description, String playStyle, List<Group> groups) {
+	public LDJTableData(Path source, String title, String description, String playStyle, List<Group> groups) {
 		this.source = source;
 		this.title = title == null ? "" : title;
 		this.description = description;

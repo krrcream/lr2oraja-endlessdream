@@ -3,13 +3,13 @@ package bms.player.beatoraja.select.bar;
 import java.util.ArrayList;
 import java.util.List;
 
-import bms.player.beatoraja.iidx.IIDXTableData;
-import bms.player.beatoraja.iidx.IIDXTableProvider;
+import bms.player.beatoraja.ldj.LDJTableData;
+import bms.player.beatoraja.ldj.LDJTableProvider;
 import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 
 /**
- * IIDX難易度表json1ファイル分の仮想フォルダ。子はグループの欄。
+ * LDJ難易度表json1ファイル分の仮想フォルダ。子はグループの欄。
  *
  * タイトルは json の title。無ければファイル名(拡張子なし)で代用する。
  * 表を開くとグループ名が並び、グループを開くと譜面が並ぶ。
@@ -19,11 +19,11 @@ import bms.player.beatoraja.song.FolderData;
  *
  * @author endlessdream
  */
-public class IIDXTableFileBar extends FolderBar {
+public class LDJTableFileBar extends FolderBar {
 
 	private final Bar[] children;
 
-	private IIDXTableFileBar(MusicSelector selector, String title, Bar[] children) {
+	private LDJTableFileBar(MusicSelector selector, String title, Bar[] children) {
 		super(selector, createFolderData(title), "");
 		setSortable(false);
 		this.children = children;
@@ -32,15 +32,15 @@ public class IIDXTableFileBar extends FolderBar {
 	/**
 	 * @return 使えるグループが1つも無かった場合はnull
 	 */
-	public static IIDXTableFileBar createIfAvailable(MusicSelector selector, IIDXTableProvider provider,
-			IIDXTableData data) {
+	public static LDJTableFileBar createIfAvailable(MusicSelector selector, LDJTableProvider provider,
+			LDJTableData data) {
 		if (selector == null || provider == null || data == null) {
 			return null;
 		}
 
 		final List<Bar> groups = new ArrayList<Bar>();
-		for (IIDXTableData.Group group : data.getGroups()) {
-			final IIDXTableGroupBar bar = IIDXTableGroupBar.createIfAvailable(selector, provider, group);
+		for (LDJTableData.Group group : data.getGroups()) {
+			final LDJTableGroupBar bar = LDJTableGroupBar.createIfAvailable(selector, provider, group);
 			if (bar != null) {
 				groups.add(bar);
 			}
@@ -49,7 +49,7 @@ public class IIDXTableFileBar extends FolderBar {
 			return null;
 		}
 
-		return new IIDXTableFileBar(selector, data.getDisplayTitle(), groups.toArray(new Bar[0]));
+		return new LDJTableFileBar(selector, data.getDisplayTitle(), groups.toArray(new Bar[0]));
 	}
 
 	private static FolderData createFolderData(String title) {

@@ -6,31 +6,31 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import bms.player.beatoraja.iidx.IIDXTableData;
-import bms.player.beatoraja.iidx.IIDXTableProvider;
+import bms.player.beatoraja.ldj.LDJTableData;
+import bms.player.beatoraja.ldj.LDJTableProvider;
 import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 
 /**
- * IIDX難易度表の入口となる仮想フォルダ(LDJ の先頭に出る "Table")。
+ * LDJ難易度表の入口となる仮想フォルダ(LDJ の先頭に出る "Table")。
  *
  * カレントディレクトリの {@code LDJ_table} 配下のjson1ファイルが子の
- * {@link IIDXTableFileBar} 1つに対応する。ディレクトリが無い、jsonが1つも読めない、
+ * {@link LDJTableFileBar} 1つに対応する。ディレクトリが無い、jsonが1つも読めない、
  * といった場合は {@link #createIfAvailable} が null を返すので、LDJのルートには
  * 何も挿さらない。この欄もソートを無効化する。
  *
  * @author endlessdream
  */
-public class IIDXTableFolderBar extends FolderBar {
+public class LDJTableFolderBar extends FolderBar {
 
 	/** LDJ のルートで一番上に出す欄の名前 */
 	private static final String TITLE = "Table";
 
-	private static final Logger logger = LoggerFactory.getLogger(IIDXTableFolderBar.class);
+	private static final Logger logger = LoggerFactory.getLogger(LDJTableFolderBar.class);
 
 	private final Bar[] children;
 
-	private IIDXTableFolderBar(MusicSelector selector, Bar[] children) {
+	private LDJTableFolderBar(MusicSelector selector, Bar[] children) {
 		super(selector, createFolderData(TITLE), "");
 		setSortable(false);
 		this.children = children;
@@ -39,15 +39,15 @@ public class IIDXTableFolderBar extends FolderBar {
 	/**
 	 * @return {@code LDJ_table} が無い、または読める表が1つも無かった場合はnull
 	 */
-	public static IIDXTableFolderBar createIfAvailable(MusicSelector selector, IIDXTableProvider provider) {
+	public static LDJTableFolderBar createIfAvailable(MusicSelector selector, LDJTableProvider provider) {
 		if (selector == null || provider == null || !provider.isAvailable()) {
 			return null;
 		}
 
 		try {
 			final List<Bar> tables = new ArrayList<Bar>();
-			for (IIDXTableData data : provider.getTables()) {
-				final IIDXTableFileBar bar = IIDXTableFileBar.createIfAvailable(selector, provider, data);
+			for (LDJTableData data : provider.getTables()) {
+				final LDJTableFileBar bar = LDJTableFileBar.createIfAvailable(selector, provider, data);
 				if (bar != null) {
 					tables.add(bar);
 				}
@@ -56,9 +56,9 @@ public class IIDXTableFolderBar extends FolderBar {
 				return null;
 			}
 
-			return new IIDXTableFolderBar(selector, tables.toArray(new Bar[0]));
+			return new LDJTableFolderBar(selector, tables.toArray(new Bar[0]));
 		} catch (RuntimeException e) {
-			logger.error("Failed to build the IIDX difficulty table bar: {}", e.getMessage());
+			logger.error("Failed to build the LDJ difficulty table bar: {}", e.getMessage());
 			return null;
 		}
 	}

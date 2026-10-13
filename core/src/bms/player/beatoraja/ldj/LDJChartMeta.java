@@ -1,6 +1,6 @@
-package bms.player.beatoraja.iidx;
+package bms.player.beatoraja.ldj;
 
-import bms.player.beatoraja.iidx.IIDXChartRef.Difficulty;
+import bms.player.beatoraja.ldj.LDJChartRef.Difficulty;
 
 /**
  * music_data.json に含まれる1曲分のメタデータ。
@@ -8,7 +8,7 @@ import bms.player.beatoraja.iidx.IIDXChartRef.Difficulty;
  *
  * @author endlessdream
  */
-public class IIDXChartMeta {
+public class LDJChartMeta {
 
 	private final String songId;
 	private final String songIdDisplay;
@@ -29,11 +29,11 @@ public class IIDXChartMeta {
 	private final int dpaLevel;
 	private final int dplLevel;
 
-	public IIDXChartMeta(String songId, String title, String artist, String genre, int gameVersion, int volume,
+	public LDJChartMeta(String songId, String title, String artist, String genre, int gameVersion, int volume,
 			int spbLevel, int spnLevel, int sphLevel, int spaLevel, int splLevel, int dpbLevel, int dpnLevel,
 			int dphLevel, int dpaLevel, int dplLevel) {
 		this.songId = songId;
-		this.songIdDisplay = IIDXChartRef.toDisplayId(songId);
+		this.songIdDisplay = LDJChartRef.toDisplayId(songId);
 		this.title = title;
 		this.artist = artist;
 		this.genre = genre;

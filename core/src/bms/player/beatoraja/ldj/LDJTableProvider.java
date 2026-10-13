@@ -1,4 +1,4 @@
-package bms.player.beatoraja.iidx;
+package bms.player.beatoraja.ldj;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 
-import bms.player.beatoraja.iidx.IIDXChartRef.Difficulty;
+import bms.player.beatoraja.ldj.LDJChartRef.Difficulty;
 import bms.player.beatoraja.select.bar.SongBar;
 import bms.player.beatoraja.song.SongData;
 
@@ -25,7 +25,7 @@ import bms.player.beatoraja.song.SongData;
  * カレントディレクトリの {@code LDJ_table} 配下にある難易度表jsonを読み込む。
  *
  * <p>読むのは iidx-pro-difficulty-table 形式で、beatoraja ネイティブの難易度表とは別物。
- * ハッシュ照合は行わず、musicId と chartType の組を {@link IIDXSongProvider} が持つ
+ * ハッシュ照合は行わず、musicId と chartType の組を {@link LDJSongProvider} が持つ
  * music_data.json の曲メタデータに突き合わせて {@link SongBar} を作る。</p>
  *
  * <p>ディレクトリが無い、ファイルが壊れている、曲が見つからない、といった場合は
@@ -33,9 +33,9 @@ import bms.player.beatoraja.song.SongData;
  *
  * @author endlessdream
  */
-public final class IIDXTableProvider {
+public final class LDJTableProvider {
 
-	private static final Logger logger = LoggerFactory.getLogger(IIDXTableProvider.class);
+	private static final Logger logger = LoggerFactory.getLogger(LDJTableProvider.class);
 
 	/** 難易度表jsonを置くディレクトリ名。プロセスのカレントディレクトリからの相対パス */
 	public static final String TABLE_DIRECTORY = "LDJ_table";
@@ -43,7 +43,7 @@ public final class IIDXTableProvider {
 	/** jsonの拡張子 */
 	private static final String JSON_SUFFIX = ".json";
 
-	private final IIDXSongProvider songs;
+	private final LDJSongProvider songs;
 
 	private final Path tableDirectory;
 
@@ -56,9 +56,9 @@ public final class IIDXTableProvider {
 
 	private boolean loadAttempted;
 
-	private List<IIDXTableData> tables = Collections.emptyList();
+	private List<LDJTableData> tables = Collections.emptyList();
 
-	public IIDXTableProvider(IIDXSongProvider songs) {
+	public LDJTableProvider(LDJSongProvider songs) {
 		this.songs = songs;
 		this.tableDirectory = Paths.get(TABLE_DIRECTORY);
 	}
@@ -79,7 +79,7 @@ public final class IIDXTableProvider {
 	/**
 	 * 読み込んだ難易度表(読み取り専用)。解析できないファイルは含まれない
 	 */
-	public List<IIDXTableData> getTables() {
+	public List<LDJTableData> getTables() {
 		load();
 		return tables;
 	}
@@ -125,24 +125,24 @@ public final class IIDXTableProvider {
 	 * @param chart 表が指す譜面
 	 * @return 対応する仮想パスのSongBar。作れない場合はnull
 	 */
-	public SongBar createSongBar(IIDXTableData.Chart chart) {
+	public SongBar createSongBar(LDJTableData.Chart chart) {
 		if (chart == null || !chart.isValid()) {
 			return null;
 		}
 
 		final String songId = chart.getSongId();
 		final Difficulty difficulty = chart.getDifficulty();
-		final IIDXChartMeta meta = songs.getChart(songId);
+		final LDJChartMeta meta = songs.getChart(songId);
 		if (meta == null) {
-			logger.info("IIDX chart {} ({}) was not found in music_data.json", songId, chart.getTitle());
+			logger.info("LDJ chart {} ({}) was not found in music_data.json", songId, chart.getTitle());
 			return null;
 		}
 		if (!meta.hasChart(difficulty)) {
-			logger.info("IIDX chart {} has no {} chart", songId, difficulty.name());
+			logger.info("LDJ chart {} has no {} chart", songId, difficulty.name());
 			return null;
 		}
 
-		final SongData song = IIDXSongProvider.createSongData(meta, difficulty);
+		final SongData song = LDJSongProvider.createSongData(meta, difficulty);
 		// 難易度値から派生したサブタグを、曲名の後ろにそのまま出す
 		if (!chart.getLabel().isEmpty()) {
 			song.setSubtitle(chart.getLabel());
@@ -157,7 +157,7 @@ public final class IIDXTableProvider {
 		scanAttempted = true;
 
 		if (!Files.isDirectory(tableDirectory)) {
-			logger.info("IIDX difficulty table directory was not found: {}", tableDirectory.toAbsolutePath());
+			logger.info("LDJ difficulty table directory was not found: {}", tableDirectory.toAbsolutePath());
 			return;
 		}
 
@@ -183,7 +183,7 @@ public final class IIDXTableProvider {
 		files = found;
 		available = !found.isEmpty();
 		if (available) {
-			logger.info("Found {} IIDX difficulty tables in {}", found.size(), tableDirectory.toAbsolutePath());
+			logger.info("Found {} LDJ difficulty tables in {}", found.size(), tableDirectory.toAbsolutePath());
 		}
 	}
 
@@ -197,30 +197,30 @@ public final class IIDXTableProvider {
 			return;
 		}
 
-		final List<IIDXTableData> parsed = new ArrayList<IIDXTableData>();
+		final List<LDJTableData> parsed = new ArrayList<LDJTableData>();
 		for (Path file : files) {
-			final IIDXTableData table = parse(file);
+			final LDJTableData table = parse(file);
 			if (table != null) {
 				parsed.add(table);
 			}
 		}
 		tables = Collections.unmodifiableList(parsed);
-		logger.info("Loaded {} IIDX difficulty tables", tables.size());
+		logger.info("Loaded {} LDJ difficulty tables", tables.size());
 	}
 
 	/**
 	 * jsonファイル1つを読む。読めない場合と、使えるグループが1つも無い場合はnull
 	 */
-	private static IIDXTableData parse(Path file) {
+	private static LDJTableData parse(Path file) {
 		try {
 			final String json = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
 			final JsonValue root = new JsonReader().parse(json);
 
-			final List<IIDXTableData.Group> groups = new ArrayList<IIDXTableData.Group>();
+			final List<LDJTableData.Group> groups = new ArrayList<LDJTableData.Group>();
 			final JsonValue array = root.get("groups");
 			if (array != null) {
 				for (JsonValue group = array.child; group != null; group = group.next) {
-					final IIDXTableData.Group parsed = parseGroup(group);
+					final LDJTableData.Group parsed = parseGroup(group);
 					if (parsed != null) {
 						groups.add(parsed);
 					}
@@ -231,7 +231,7 @@ public final class IIDXTableProvider {
 				return null;
 			}
 
-			return new IIDXTableData(file, stringValue(root, "title"), stringValue(root, "description"),
+			return new LDJTableData(file, stringValue(root, "title"), stringValue(root, "description"),
 					stringValue(root, "playStyle"), groups);
 		} catch (IOException e) {
 			logger.error("Failed to read {}: {}", file, e.getMessage());
@@ -245,18 +245,18 @@ public final class IIDXTableProvider {
 	/**
 	 * グループ1つを読む。名前が無いものと、譜面が1つも無いものは使わない
 	 */
-	private static IIDXTableData.Group parseGroup(JsonValue group) {
+	private static LDJTableData.Group parseGroup(JsonValue group) {
 		final String name = stringValue(group, "name").trim();
 		if (name.isEmpty()) {
-			logger.warn("IIDX difficulty table has a group without name");
+			logger.warn("LDJ difficulty table has a group without name");
 			return null;
 		}
 
-		final List<IIDXTableData.Chart> charts = new ArrayList<IIDXTableData.Chart>();
+		final List<LDJTableData.Chart> charts = new ArrayList<LDJTableData.Chart>();
 		final JsonValue array = group.get("charts");
 		if (array != null) {
 			for (JsonValue chart = array.child; chart != null; chart = chart.next) {
-				final IIDXTableData.Chart parsed = parseChart(chart);
+				final LDJTableData.Chart parsed = parseChart(chart);
 				if (parsed != null) {
 					charts.add(parsed);
 				}
@@ -266,13 +266,13 @@ public final class IIDXTableProvider {
 			return null;
 		}
 
-		return new IIDXTableData.Group(name, stringValue(group, "gameName"), charts);
+		return new LDJTableData.Group(name, stringValue(group, "gameName"), charts);
 	}
 
 	/**
 	 * 譜面1つを読む。musicId と chartType の両方が読めないものは使わない
 	 */
-	private static IIDXTableData.Chart parseChart(JsonValue chart) {
+	private static LDJTableData.Chart parseChart(JsonValue chart) {
 		final int musicId = intValue(chart, "musicId");
 		if (musicId <= 0 || chart.get("chartType") == null) {
 			return null;
@@ -282,7 +282,7 @@ public final class IIDXTableProvider {
 			return null;
 		}
 
-		return new IIDXTableData.Chart(Integer.toString(musicId), difficulty,
+		return new LDJTableData.Chart(Integer.toString(musicId), difficulty,
 				(float) doubleValue(chart, "difficultyValue"), stringValue(chart, "label"),
 				stringValue(chart, "title"));
 	}

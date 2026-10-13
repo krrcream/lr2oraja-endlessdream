@@ -978,10 +978,10 @@ public class Config implements Validatable {
 			// 連携が有効な設定に限りパスの妥当性を検査する。ここで落とさず警告に留めるのは、
 			// 外付けドライブが未接続のまま起動した場合でも設定画面から修正できるようにするため。
 			if (!validateDirectory(LDJ_SoundPath)) {
-				logger.warn("IIDX sound path is not a directory: {}", LDJ_SoundPath);
+				logger.warn("LDJ sound path is not a directory: {}", LDJ_SoundPath);
 			}
 			if (!LDJ_MoviePath.isEmpty() && !validateDirectory(LDJ_MoviePath)) {
-				logger.warn("IIDX movie path is not a directory: {}", LDJ_MoviePath);
+				logger.warn("LDJ movie path is not a directory: {}", LDJ_MoviePath);
 			}
 			if (LDJ_ToolPath.isEmpty() || !Paths.get(LDJ_ToolPath, "conversion", "conversion.py").toFile().isFile()) {
 				logger.warn("iidx2bms checkout is missing or invalid: {}", LDJ_ToolPath);

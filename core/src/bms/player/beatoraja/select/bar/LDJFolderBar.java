@@ -3,24 +3,24 @@ package bms.player.beatoraja.select.bar;
 import java.util.ArrayList;
 import java.util.List;
 
-import bms.player.beatoraja.iidx.IIDXSongProvider;
-import bms.player.beatoraja.iidx.IIDXTableProvider;
+import bms.player.beatoraja.ldj.LDJSongProvider;
+import bms.player.beatoraja.ldj.LDJTableProvider;
 import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 import bms.player.beatoraja.song.SongData;
 
 /**
- * IIDX(iidx2bms)の仮想ルートフォルダ(LDJ)。
+ * LDJ(iidx2bms)の仮想ルートフォルダ(LDJ)。
  *
- * 先頭に難易度表の入口({@link IIDXTableFolderBar})を置き、続けて
+ * 先頭に難易度表の入口({@link LDJTableFolderBar})を置き、続けて
  * iidx2bms の music_data.json から生成した {@link SongBar} を ☆レベル別の
- * {@link IIDXStarFolderBar} に分けて並べる。SP☆1〜☆12 と DP☆1〜☆12 を1画面に置く。
+ * {@link LDJStarFolderBar} に分けて並べる。SP☆1〜☆12 と DP☆1〜☆12 を1画面に置く。
  *
  * 難易度表のjsonが1つも読めない場合は Table 欄を挿さらない。表の有無で☆欄の
  * 構成が変わることはない。
  *
  * {@link FolderData} を合成して {@link FolderBar} を継承する理由と、合成フォルダの
- * path を空文字にする理由は {@link IIDXStarFolderBar} と同じ。
+ * path を空文字にする理由は {@link LDJStarFolderBar} と同じ。
  *
  * このフォルダ自身はソートを無効化する。☆欄はタイトル順に並べる必要があるが、
  * {@link BarSorter} は非 SongBar 同士をタイトルで比較するため、有効なままだと
@@ -28,7 +28,7 @@ import bms.player.beatoraja.song.SongData;
  *
  * @author endlessdream
  */
-public class IIDXFolderBar extends FolderBar {
+public class LDJFolderBar extends FolderBar {
 
 	/** ☆レベルとして扱う最大値。これを超えるレベルは☆12に丸める */
 	private static final int MAX_STAR = 12;
@@ -39,11 +39,11 @@ public class IIDXFolderBar extends FolderBar {
 	 * @param selector 子の☆欄を作るために引き継ぐ
 	 * @param provider 難易度表jsonの譜面を引くために引き継ぐ
 	 */
-	public IIDXFolderBar(MusicSelector selector, IIDXSongProvider provider, SongBar[] spBars, SongBar[] dpBars) {
+	public LDJFolderBar(MusicSelector selector, LDJSongProvider provider, SongBar[] spBars, SongBar[] dpBars) {
 		super(selector, createFolderData("LDJ"), "");
 		setSortable(false);
 		final List<Bar> stars = new ArrayList<Bar>();
-		final Bar table = IIDXTableFolderBar.createIfAvailable(selector, new IIDXTableProvider(provider));
+		final Bar table = LDJTableFolderBar.createIfAvailable(selector, new LDJTableProvider(provider));
 		if (table != null) {
 			stars.add(table);
 		}
@@ -77,7 +77,7 @@ public class IIDXFolderBar extends FolderBar {
 				}
 			}
 			if (!bucket.isEmpty()) {
-				out.add(new IIDXStarFolderBar(selector, prefix + level, bucket.toArray(new SongBar[0])));
+				out.add(new LDJStarFolderBar(selector, prefix + level, bucket.toArray(new SongBar[0])));
 			}
 		}
 	}

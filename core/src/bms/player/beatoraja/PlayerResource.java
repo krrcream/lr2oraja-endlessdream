@@ -135,9 +135,9 @@ public final class PlayerResource {
 	private String freqString;
 	private boolean forceNoIRSend;
 	/**
-	 * 今回読み込んだ譜面がLDJ(IIDX)由来かどうか。譜面を読み込むたびに設定され、clear()で解除される
+	 * 今回読み込んだ譜面がLDJ由来かどうか。譜面を読み込むたびに設定され、clear()で解除される
 	 */
-	private boolean fromIIDX;
+	private boolean fromLDJ;
 	// Full list of difficult tables that contains current song
 	private List<String> reverseLookup = new ArrayList<>();
 
@@ -165,7 +165,7 @@ public final class PlayerResource {
 		combo = 0;
 		maxcombo = 0;
 		bmsPaths = null;
-		fromIIDX = false;
+		fromLDJ = false;
 		setTablename("");
 		setTablelevel("");
 	}
@@ -244,15 +244,15 @@ public final class PlayerResource {
 			}
 		}
 
-		return applyIIDXScoreKey(model);
+		return applyLDJScoreKey(model);
 	}
 
 	/**
-	 * LDJ(IIDX)譜面のスコアキーをモデルへ引き継ぐ。iidx:// の仮想キーは変換後の実BMSの
+	 * LDJ譜面のスコアキーをモデルへ引き継ぐ。iidx:// の仮想キーは変換後の実BMSの
 	 * 内容ハッシュとは異なるため、変換でパスが書き換わった後もSongData側のキーを使う。
 	 */
-	private BMSModel applyIIDXScoreKey(BMSModel model) {
-		if (model != null && songdata != null && songdata.isIIDXChart()) {
+	private BMSModel applyLDJScoreKey(BMSModel model) {
+		if (model != null && songdata != null && songdata.isLDJChart()) {
 			model.setMD5(songdata.getMd5());
 			model.setSHA256(songdata.getSha256());
 		}
@@ -686,12 +686,12 @@ public final class PlayerResource {
 		this.forceNoIRSend = forceNoIRSend;
 	}
 
-	public boolean isFromIIDX() {
-		return fromIIDX;
+	public boolean isFromLDJ() {
+		return fromLDJ;
 	}
 
-	public void setFromIIDX(boolean fromIIDX) {
-		this.fromIIDX = fromIIDX;
+	public void setFromLDJ(boolean fromLDJ) {
+		this.fromLDJ = fromLDJ;
 	}
 
 	public Future<BMSLoudnessAnalyzer.AnalysisResult> getAnalysisTask() {

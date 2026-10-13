@@ -53,7 +53,7 @@ public final class PlayDataAccessor {
 	 */
 	private ScoreDatabaseAccessor scoredb;
 	/**
-	 * LDJ(IIDX)スコアデータベースアクセサ
+	 * LDJスコアデータベースアクセサ
 	 */
 	private ScoreDatabaseAccessor ldjscoredb;
 	/**
@@ -90,7 +90,7 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * LDJ(IIDX)スコアデータベースのパスを返す。
+	 * LDJスコアデータベースのパスを返す。
 	 * Config.getLDJ_Sources()が設定されていればそのディレクトリ配下に置く。
 	 * 未設定の場合はscore.dbと同じディレクトリに置く(OSの一時領域には置かない)。
 	 */
@@ -179,14 +179,14 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * スコアデータを読み込む。LDJ(IIDX)譜面の場合は ldjscore.db から読む
+	 * スコアデータを読み込む。LDJ譜面の場合は ldjscore.db から読む
 	 *
 	 * @param model
 	 *            対象のモデル
 	 * @param lnmode
 	 *            LNモード
 	 * @param ldj
-	 *            LDJ(IIDX)譜面の場合はtrue
+	 *            LDJ譜面の場合はtrue
 	 * @return スコアデータ
 	 */
 	public ScoreData readScoreData(BMSModel model, int lnmode, boolean ldj) {
@@ -211,7 +211,7 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * スコアデータを読み込む。LDJ(IIDX)譜面の場合は ldjscore.db から読む
+	 * スコアデータを読み込む。LDJ譜面の場合は ldjscore.db から読む
 	 *
 	 * @param hash
 	 *            楽曲のハッシュ値(LDJ譜面の場合は iidx:// 由来の仮想ハッシュ)
@@ -220,7 +220,7 @@ public final class PlayDataAccessor {
 	 * @param lnmode
 	 *            LNモード
 	 * @param ldj
-	 *            LDJ(IIDX)譜面の場合はtrue
+	 *            LDJ譜面の場合はtrue
 	 * @return スコアデータ
 	 */
 	public ScoreData readScoreData(String hash, boolean ln, int lnmode, boolean ldj) {
@@ -229,7 +229,7 @@ public final class PlayDataAccessor {
 
 	/**
 	 * スコアデータをまとめて読み込み、collectorに渡す。
-	 * LDJ(IIDX)譜面は ldjscore.db から、それ以外は score.db から読む。
+	 * LDJ譜面は ldjscore.db から、それ以外は score.db から読む。
 	 * @param collector スコアデータのcollector
 	 * @param songs 楽曲データ
 	 * @param lnmode LNモード
@@ -237,7 +237,7 @@ public final class PlayDataAccessor {
 	public void readScoreDatas(ScoreDataCollector collector, SongData[] songs, int lnmode) {
 		List<SongData> ldjsongs = null;
 		for (SongData song : songs) {
-			if (song.isIIDXChart()) {
+			if (song.isLDJChart()) {
 				if (ldjsongs == null) {
 					ldjsongs = new ArrayList<SongData>();
 				}
@@ -251,7 +251,7 @@ public final class PlayDataAccessor {
 		if (ldjsongs.size() < songs.length) {
 			List<SongData> others = new ArrayList<SongData>(songs.length - ldjsongs.size());
 			for (SongData song : songs) {
-				if (!song.isIIDXChart()) {
+				if (!song.isLDJChart()) {
 					others.add(song);
 				}
 			}
@@ -281,7 +281,7 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * スコアデータを書き込む。LDJ(IIDX)譜面の場合は ldjscore.db に書く
+	 * スコアデータを書き込む。LDJ譜面の場合は ldjscore.db に書く
 	 *
 	 * @param newscore
 	 *            スコアデータ
@@ -292,7 +292,7 @@ public final class PlayDataAccessor {
 	 * @param updateScore
 	 *            プレイ回数のみ反映する場合はfalse
 	 * @param ldj
-	 *            LDJ(IIDX)譜面の場合はtrue
+	 *            LDJ譜面の場合はtrue
 	 */
 	public void writeScoreData(ScoreData newscore, BMSModel model, int lnmode, boolean updateScore, boolean ldj) {
 		ScoreDatabaseAccessor db = ldj ? ldjscoredb : scoredb;

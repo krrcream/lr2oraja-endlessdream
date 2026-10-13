@@ -347,7 +347,7 @@ public class MusicResult extends AbstractResult {
 			return;
 		}
 		final ScoreData oldsc = main.getPlayDataAccessor().readScoreData(resource.getBMSModel(),
-				resource.getPlayerConfig().getLnmode(), resource.isFromIIDX());
+				resource.getPlayerConfig().getLnmode(), resource.isFromLDJ());
 		oldscore = oldsc != null ? oldsc : new ScoreData();
 
 		getScoreDataProperty().setTargetScore(oldscore.getExscore(), resource.getTargetScoreData() != null ? resource.getTargetScoreData().getExscore() : 0, resource.getBMSModel().getTotalNotes());
@@ -459,7 +459,7 @@ public class MusicResult extends AbstractResult {
 
 		if (resource.getPlayMode().mode == BMSPlayerMode.Mode.PLAY && !(isFreqTrainerEnabled() && isFreqNegative())) {
 			main.getPlayDataAccessor().writeScoreData(resource.getScoreData(), resource.getBMSModel(),
-					resource.getPlayerConfig().getLnmode(), resource.isUpdateScore(), resource.isFromIIDX());
+					resource.getPlayerConfig().getLnmode(), resource.isUpdateScore(), resource.isFromLDJ());
 		} else {
 			logger.info("プレイモードが{}のため、スコア登録はされません", resource.getPlayMode().mode.name());
 		}

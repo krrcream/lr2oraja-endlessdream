@@ -5,16 +5,16 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import bms.player.beatoraja.iidx.IIDXTableData;
-import bms.player.beatoraja.iidx.IIDXTableProvider;
+import bms.player.beatoraja.ldj.LDJTableData;
+import bms.player.beatoraja.ldj.LDJTableProvider;
 import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 
 /**
- * IIDX難易度表のグループ1つ分の仮想フォルダ。子は実際の {@link SongBar}。
+ * LDJ難易度表のグループ1つ分の仮想フォルダ。子は実際の {@link SongBar}。
  *
  * 表のグループ名がそのままこの欄のタイトルになり、配下に表が指定した譜面が並ぶ。
- * 譜面は {@link IIDXTableProvider#createSongBar(IIDXTableData.Chart)} で作るため、
+ * 譜面は {@link LDJTableProvider#createSongBar(LDJTableData.Chart)} で作るため、
  * music_data.json に無い曲・その難易度の譜面が無い曲はここで落ちる。
  * 1曲も残らないグループは {@link #createIfAvailable} が null を返し、
  * 選択しても何も起きないデッドバーにならないようにしている。
@@ -25,19 +25,19 @@ import bms.player.beatoraja.song.FolderData;
  *
  * @author endlessdream
  */
-public class IIDXTableGroupBar extends FolderBar {
+public class LDJTableGroupBar extends FolderBar {
 
 	/** difficultyValue 昇順。同値は安定ソートにより json の並び順のまま */
-	private static final Comparator<IIDXTableData.Chart> DIFFICULTY_VALUE_ORDER = new Comparator<IIDXTableData.Chart>() {
+	private static final Comparator<LDJTableData.Chart> DIFFICULTY_VALUE_ORDER = new Comparator<LDJTableData.Chart>() {
 		@Override
-		public int compare(IIDXTableData.Chart a, IIDXTableData.Chart b) {
+		public int compare(LDJTableData.Chart a, LDJTableData.Chart b) {
 			return Float.compare(a.getDifficultyValue(), b.getDifficultyValue());
 		}
 	};
 
 	private final SongBar[] songs;
 
-	private IIDXTableGroupBar(MusicSelector selector, String title, SongBar[] songs) {
+	private LDJTableGroupBar(MusicSelector selector, String title, SongBar[] songs) {
 		super(selector, createFolderData(title), "");
 		setSortable(false);
 		this.songs = songs;
@@ -46,16 +46,16 @@ public class IIDXTableGroupBar extends FolderBar {
 	/**
 	 * @return 表の譜面が1つも残らなかった場合はnull
 	 */
-	public static IIDXTableGroupBar createIfAvailable(MusicSelector selector, IIDXTableProvider provider,
-			IIDXTableData.Group group) {
+	public static LDJTableGroupBar createIfAvailable(MusicSelector selector, LDJTableProvider provider,
+			LDJTableData.Group group) {
 		if (selector == null || provider == null || group == null) {
 			return null;
 		}
 
-		final List<IIDXTableData.Chart> charts = new ArrayList<IIDXTableData.Chart>(group.getCharts());
+		final List<LDJTableData.Chart> charts = new ArrayList<LDJTableData.Chart>(group.getCharts());
 		Collections.sort(charts, DIFFICULTY_VALUE_ORDER);
 		final List<SongBar> songs = new ArrayList<SongBar>();
-		for (IIDXTableData.Chart chart : charts) {
+		for (LDJTableData.Chart chart : charts) {
 			final SongBar bar = provider.createSongBar(chart);
 			if (bar != null) {
 				songs.add(bar);
@@ -65,7 +65,7 @@ public class IIDXTableGroupBar extends FolderBar {
 			return null;
 		}
 
-		return new IIDXTableGroupBar(selector, group.getName(), songs.toArray(new SongBar[0]));
+		return new LDJTableGroupBar(selector, group.getName(), songs.toArray(new SongBar[0]));
 	}
 
 	private static FolderData createFolderData(String title) {

@@ -1,4 +1,4 @@
-package bms.player.beatoraja.iidx;
+package bms.player.beatoraja.ldj;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * IIDX譜面の一時変換で使用するファイル配置を管理する。
+ * LDJ譜面の一時変換で使用するファイル配置を管理する。
  *
  * <pre>
  * %TEMP%/lr2oraja_iidx/
@@ -26,9 +26,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author endlessdream
  */
-public class IIDXTempFileManager {
+public class LDJTempFileManager {
 
-	private static final Logger logger = LoggerFactory.getLogger(IIDXTempFileManager.class);
+	private static final Logger logger = LoggerFactory.getLogger(LDJTempFileManager.class);
 
 	private static final String BASE_DIR_NAME = "lr2oraja_iidx";
 	private static final String CLI_DIR_NAME = "cli";
@@ -45,11 +45,11 @@ public class IIDXTempFileManager {
 	private Path bridgeScript;
 	private boolean prepared;
 
-	public IIDXTempFileManager() {
+	public LDJTempFileManager() {
 		this(Paths.get(System.getProperty("java.io.tmpdir", "."), BASE_DIR_NAME));
 	}
 
-	public IIDXTempFileManager(Path baseDir) {
+	public LDJTempFileManager(Path baseDir) {
 		this.baseDir = baseDir.toAbsolutePath().normalize();
 		this.cliDir = this.baseDir.resolve(CLI_DIR_NAME);
 		this.cacheDir = this.baseDir.resolve(CACHE_DIR_NAME);
@@ -90,7 +90,7 @@ public class IIDXTempFileManager {
 			Files.createDirectories(sessionDir);
 
 			Path script = cliDir.resolve(BRIDGE_FILE_NAME);
-			try (InputStream in = IIDXTempFileManager.class.getClassLoader().getResourceAsStream(BRIDGE_RESOURCE)) {
+			try (InputStream in = LDJTempFileManager.class.getClassLoader().getResourceAsStream(BRIDGE_RESOURCE)) {
 				if (in == null) {
 					logger.error("iidx2bms bridge script is missing from the classpath: {}", BRIDGE_RESOURCE);
 					return false;
@@ -101,7 +101,7 @@ public class IIDXTempFileManager {
 			prepared = true;
 			return true;
 		} catch (IOException e) {
-			logger.error("Failed to prepare the IIDX temporary directory: {}", e.getMessage());
+			logger.error("Failed to prepare the LDJ temporary directory: {}", e.getMessage());
 			return false;
 		}
 	}
@@ -184,7 +184,7 @@ public class IIDXTempFileManager {
 		try (Stream<Path> stream = Files.list(cacheDir)) {
 			stream.filter(Files::isDirectory).forEach(entries::add);
 		} catch (IOException e) {
-			logger.error("Failed to inspect the IIDX cache directory: {}", e.getMessage());
+			logger.error("Failed to inspect the LDJ cache directory: {}", e.getMessage());
 			return;
 		}
 
@@ -214,7 +214,7 @@ public class IIDXTempFileManager {
 			long size = directorySize(entry);
 			if (deleteRecursively(entry)) {
 				total -= size;
-				logger.info("Evicted IIDX cache entry {} ({} bytes)", entry.getFileName(), size);
+				logger.info("Evicted LDJ cache entry {} ({} bytes)", entry.getFileName(), size);
 			}
 		}
 	}

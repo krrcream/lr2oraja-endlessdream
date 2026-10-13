@@ -251,7 +251,7 @@ class RivalTargetProperty extends TargetProperty {
         var rivalsScores = rivalDataAccessor.getAllRivalsScores(songData, lnMode);
         rivalsScores.forEach(scoreArray::add);
 
-        ScoreData myScore = main.getPlayDataAccessor().readScoreData(songData.getBMSModel(), lnMode, songData.isIIDXChart());
+        ScoreData myScore = main.getPlayDataAccessor().readScoreData(songData.getBMSModel(), lnMode, songData.isLDJChart());
         if (myScore != null) {
             myScore.setPlayer("");
             scoreArray.add(myScore);
@@ -310,7 +310,7 @@ class NextRankTargetProperty extends TargetProperty {
     @Override
     public ScoreData getTarget(MainController main) {
         ScoreData now = main.getPlayDataAccessor().readScoreData(main.getPlayerResource().getBMSModel()
-                , main.getPlayerConfig().getLnmode(), main.getPlayerResource().isFromIIDX());
+                , main.getPlayerConfig().getLnmode(), main.getPlayerResource().isFromLDJ());
         final int nowscore = now != null ? now.getExscore() : 0;
         final int max = main.getPlayerResource().getBMSModel().getTotalNotes() * 2;
         int targetscore = max;
@@ -414,7 +414,7 @@ class InternetRankingTargetProperty extends TargetProperty {
     
     private int getTargetRank(MainController main, RankingData ranking) {
         ScoreData now = main.getPlayDataAccessor().readScoreData(main.getPlayerResource().getBMSModel()
-                , main.getPlayerConfig().getLnmode(), main.getPlayerResource().isFromIIDX());
+                , main.getPlayerConfig().getLnmode(), main.getPlayerResource().isFromLDJ());
         final int nowscore = now != null ? now.getExscore() : 0;
 		switch(target) {
 		case NEXT:
