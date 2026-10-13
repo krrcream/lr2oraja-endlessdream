@@ -459,7 +459,7 @@ public class MusicResult extends AbstractResult {
 
 		if (resource.getPlayMode().mode == BMSPlayerMode.Mode.PLAY && !(isFreqTrainerEnabled() && isFreqNegative())) {
 			main.getPlayDataAccessor().writeScoreData(resource.getScoreData(), resource.getBMSModel(),
-					resource.getPlayerConfig().getLnmode(), resource.isUpdateScore());
+					resource.getPlayerConfig().getLnmode(), resource.isUpdateScore(), resource.isFromIIDX());
 		} else {
 			logger.info("プレイモードが{}のため、スコア登録はされません", resource.getPlayMode().mode.name());
 		}

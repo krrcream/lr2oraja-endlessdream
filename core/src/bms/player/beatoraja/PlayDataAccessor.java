@@ -262,11 +262,30 @@ public final class PlayDataAccessor {
 	 *            プレイ回数のみ反映する場合はfalse
 	 */
 	public void writeScoreData(ScoreData newscore, BMSModel model, int lnmode, boolean updateScore) {
+		writeScoreData(newscore, model, lnmode, updateScore, false);
+	}
+
+	/**
+	 * スコアデータを書き込む。LDJ(IIDX)譜面の場合は ldjscore.db に書く
+	 *
+	 * @param newscore
+	 *            スコアデータ
+	 * @param model
+	 *            対象のモデル
+	 * @param lnmode
+	 *            LNモード
+	 * @param updateScore
+	 *            プレイ回数のみ反映する場合はfalse
+	 * @param ldj
+	 *            LDJ(IIDX)譜面の場合はtrue
+	 */
+	public void writeScoreData(ScoreData newscore, BMSModel model, int lnmode, boolean updateScore, boolean ldj) {
+		ScoreDatabaseAccessor db = ldj ? ldjscoredb : scoredb;
 		String hash = model.getSHA256();
 		if (newscore == null) {
 			return;
 		}
-		ScoreData score = scoredb.getScoreData(hash, model.containsUndefinedLongNote() ? lnmode : 0);
+		ScoreData score = db.getScoreData(hash, model.containsUndefinedLongNote() ? lnmode : 0);
 
 		if (score == null) {
 			score = new ScoreData();
@@ -330,7 +349,7 @@ public final class PlayDataAccessor {
 		score.setPlaycount(score.getPlaycount() + 1);
 		score.setDate(Calendar.getInstance(TimeZone.getDefault()).getTimeInMillis() / 1000L);
 		score.setScorehash(getScoreHash(score));
-		scoredb.setScoreData(score);
+		db.setScoreData(score);
 		if (log.getSha256() != null && scorelogdb != null) {
 			log.setMode(score.getMode());
 			log.setDate(score.getDate());
