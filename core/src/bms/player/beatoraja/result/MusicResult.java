@@ -347,7 +347,7 @@ public class MusicResult extends AbstractResult {
 			return;
 		}
 		final ScoreData oldsc = main.getPlayDataAccessor().readScoreData(resource.getBMSModel(),
-				resource.getPlayerConfig().getLnmode());
+				resource.getPlayerConfig().getLnmode(), resource.isFromIIDX());
 		oldscore = oldsc != null ? oldsc : new ScoreData();
 
 		getScoreDataProperty().setTargetScore(oldscore.getExscore(), resource.getTargetScoreData() != null ? resource.getTargetScoreData().getExscore() : 0, resource.getBMSModel().getTotalNotes());

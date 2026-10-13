@@ -556,7 +556,7 @@ public class BMSPlayer extends MainState {
 
 		bga = resource.getBGAManager();
 
-		ScoreData score = main.getPlayDataAccessor().readScoreData(model, config.getLnmode());
+		ScoreData score = main.getPlayDataAccessor().readScoreData(model, config.getLnmode(), resource.isFromIIDX());
 		logger.info("スコアデータベースからスコア取得");
 		if (score == null) {
 			score = new ScoreData();

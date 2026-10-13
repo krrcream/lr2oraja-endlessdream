@@ -175,9 +175,24 @@ public final class PlayDataAccessor {
 	 * @return スコアデータ
 	 */
 	public ScoreData readScoreData(BMSModel model, int lnmode) {
+		return readScoreData(model, lnmode, false);
+	}
+
+	/**
+	 * スコアデータを読み込む。LDJ(IIDX)譜面の場合は ldjscore.db から読む
+	 *
+	 * @param model
+	 *            対象のモデル
+	 * @param lnmode
+	 *            LNモード
+	 * @param ldj
+	 *            LDJ(IIDX)譜面の場合はtrue
+	 * @return スコアデータ
+	 */
+	public ScoreData readScoreData(BMSModel model, int lnmode, boolean ldj) {
 		String hash = model.getSHA256();
 		boolean ln = model.containsUndefinedLongNote();
-		return readScoreData(hash, ln, lnmode);
+		return readScoreData(hash, ln, lnmode, ldj);
 	}
 
 	/**
