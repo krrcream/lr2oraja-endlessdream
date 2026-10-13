@@ -294,6 +294,18 @@ public final class PlayerResource {
 			}
 		}
 
+		return applyIIDXScoreKey(model);
+	}
+
+	/**
+	 * LDJ(IIDX)譜面のスコアキーをモデルへ引き継ぐ。iidx:// の仮想キーは変換後の実BMSの
+	 * 内容ハッシュとは異なるため、変換でパスが書き換わった後もSongData側のキーを使う。
+	 */
+	private BMSModel applyIIDXScoreKey(BMSModel model) {
+		if (model != null && songdata != null && songdata.isIIDXChart()) {
+			model.setMD5(songdata.getMd5());
+			model.setSHA256(songdata.getSha256());
+		}
 		return model;
 	}
 
