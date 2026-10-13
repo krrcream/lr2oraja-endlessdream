@@ -20,11 +20,11 @@ import bms.model.Mode;
 import bms.player.beatoraja.*;
 import bms.player.beatoraja.Config.SongPreview;
 import bms.player.beatoraja.ScoreDatabaseAccessor.ScoreDataCollector;
-import bms.player.beatoraja.iidx.IIDXChartRef;
-import bms.player.beatoraja.iidx.IIDXConversionOverlay;
-import bms.player.beatoraja.iidx.IIDXConversionService;
-import bms.player.beatoraja.iidx.IIDXSongProvider;
-import bms.player.beatoraja.iidx.IIDXTempFileManager;
+import bms.player.beatoraja.ldj.LDJChartRef;
+import bms.player.beatoraja.ldj.LDJConversionOverlay;
+import bms.player.beatoraja.ldj.LDJConversionService;
+import bms.player.beatoraja.ldj.LDJSongProvider;
+import bms.player.beatoraja.ldj.LDJTempFileManager;
 import bms.player.beatoraja.input.BMSPlayerInputProcessor;
 import bms.player.beatoraja.input.KeyCommand;
 import bms.player.beatoraja.input.KeyBoardInputProcesseor.ControlKeys;
@@ -115,22 +115,22 @@ public final class MusicSelector extends MainState {
 
 	private PixmapResourcePool stagefiles;
 
-	// IIDX連携(iidx2bms)。config で有効かつ変換環境が使える場合のみ非null
-	private IIDXSongProvider iidxProvider;
-	private IIDXTempFileManager iidxTempFiles;
-	private IIDXConversionService iidxConverter;
-	private Bar iidxBar;
+	// LDJ連携(iidx2bms)。config で有効かつ変換環境が使える場合のみ非null
+	private LDJSongProvider ldjProvider;
+	private LDJTempFileManager ldjTempFiles;
+	private LDJConversionService ldjConverter;
+	private Bar ldjBar;
 	// 変換スレッド関連。完了検出は render() での isAlive() ポーリング
-	private Thread iidxThread;
-	private SongData iidxSong;
-	private Bar iidxBarAtStart;
-	private BMSPlayerMode iidxMode;
+	private Thread ldjThread;
+	private SongData ldjSong;
+	private Bar ldjBarAtStart;
+	private BMSPlayerMode ldjMode;
 	// isAlive()による完了検出はhappens-beforeを保証しないため、ワーカーが書くフィールドはvolatileにする
-	private volatile IIDXConversionService.Result iidxResult;
-	private volatile String iidxError;
-	private boolean iidxProceedRead = false;
-	private volatile int iidxProgress = -1;
-	private volatile String iidxStage = "";
+	private volatile LDJConversionService.Result ldjResult;
+	private volatile String ldjError;
+	private boolean ldjProceedRead = false;
+	private volatile int ldjProgress = -1;
+	private volatile String ldjStage = "";
 
 	public MusicSelector(MainController main, boolean songUpdated) {
 		super(main);
@@ -143,7 +143,7 @@ public final class MusicSelector extends MainState {
 		scorecache = new ScoreDataCache() {
 			@Override
 			protected ScoreData readScoreDatasFromSource(SongData song, int lnmode) {
-				return pda.readScoreData(song.getSha256(), song.hasUndefinedLongNote(), lnmode, song.isIIDXChart());
+				return pda.readScoreData(song.getSha256(), song.hasUndefinedLongNote(), lnmode, song.isLDJChart());
 			}
 
 			@Override
@@ -202,7 +202,7 @@ public final class MusicSelector extends MainState {
 		input.setKeyboardConfig(pc.getKeyboardConfig());
 		input.setControllerConfig(pc.getController());
 		input.setMidiConfig(pc.getMidiConfig());
-		setupIIDXFolder();
+		setupLDJFolder();
 		manager.updateBar();
 
         loadSkin(SkinType.MUSIC_SELECT);
@@ -224,52 +224,52 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
-	 * IIDX連携の設定はプレイヤー個別設定(PlayerConfig)ではなく全体設定(Config)側にある
+	 * LDJ連携の設定はプレイヤー個別設定(PlayerConfig)ではなく全体設定(Config)側にある
 	 */
-	private Config iidxConfig() {
+	private Config ldjConfig() {
 		return main.getPlayerResource().getConfig();
 	}
 
 	/**
-	 * IIDX連携(iidx2bms)を初期化する。設定が空、または変換環境が使えない場合は
-	 * 何もしない(選曲画面にIIDXフォルダを作らない)
+	 * LDJ連携(iidx2bms)を初期化する。設定が空、または変換環境が使えない場合は
+	 * 何もしない(選曲画面にLDJフォルダを作らない)
 	 */
-	private void setupIIDXFolder() {
-		final String projectRoot = iidxConfig().getLDJ_ToolPath();
+	private void setupLDJFolder() {
+		final String projectRoot = ldjConfig().getLDJ_ToolPath();
 		if (projectRoot == null || projectRoot.isEmpty()) {
 			return;
 		}
-		final IIDXSongProvider provider = new IIDXSongProvider(projectRoot);
+		final LDJSongProvider provider = new LDJSongProvider(projectRoot);
 		if (!provider.isAvailable()) {
-			logger.warn("iidx2bms: 変換環境を利用できないためIIDX連携を無効にします: {}", projectRoot);
+			logger.warn("iidx2bms: 変換環境を利用できないためLDJ連携を無効にします: {}", projectRoot);
 			return;
 		}
 		// LDJ_Sources未設定時は従来どおりOS一時ディレクトリにフォールバックする
-		final String sourcesRoot = iidxConfig().getLDJ_Sources();
-		final IIDXTempFileManager tempFiles = (sourcesRoot == null || sourcesRoot.isEmpty())
-				? new IIDXTempFileManager()
-				: new IIDXTempFileManager(Paths.get(sourcesRoot));
+		final String sourcesRoot = ldjConfig().getLDJ_Sources();
+		final LDJTempFileManager tempFiles = (sourcesRoot == null || sourcesRoot.isEmpty())
+				? new LDJTempFileManager()
+				: new LDJTempFileManager(Paths.get(sourcesRoot));
 		if (!tempFiles.prepare()) {
-			logger.warn("iidx2bms: 作業ディレクトリを準備できないためIIDX連携を無効にします");
+			logger.warn("iidx2bms: 作業ディレクトリを準備できないためLDJ連携を無効にします");
 			return;
 		}
-		iidxProvider = provider;
-		iidxTempFiles = tempFiles;
-		iidxConverter = new IIDXConversionService(tempFiles);
-		iidxBar = new IIDXFolderBar(this, provider.getSongBars(false), provider.getSongBars(true));
-		manager.setAppendDirectoryBar("iidx", iidxBar);
+		ldjProvider = provider;
+		ldjTempFiles = tempFiles;
+		ldjConverter = new LDJConversionService(tempFiles);
+		ldjBar = new LDJFolderBar(this, provider, provider.getSongBars(false), provider.getSongBars(true));
+		manager.setAppendDirectoryBar("ldj", ldjBar);
 	}
 
 	/**
 	 * 変換要求を組み立てる。outRootにnullを渡すと変換はできないが、キャッシュ判定には使える
 	 */
-	private IIDXConversionService.Request newIIDXRequest(IIDXChartRef ref, Path outRoot) {
-		final Config iidx = iidxConfig();
-		final IIDXConversionService.Request request = new IIDXConversionService.Request(ref.getSongId(),
-				ref.getSongIdDisplay(), iidx.getLDJ_ToolPath(), iidx.getLDJ_SoundPath(),
-				iidx.getLDJ_MoviePath(), outRoot);
-		request.includeBga = iidx.isLDJ_IncludeBGA();
-		request.includePreview = iidx.isLDJ_IncludePreview();
+	private LDJConversionService.Request newLDJRequest(LDJChartRef ref, Path outRoot) {
+		final Config ldj = ldjConfig();
+		final LDJConversionService.Request request = new LDJConversionService.Request(ref.getSongId(),
+				ref.getSongIdDisplay(), ldj.getLDJ_ToolPath(), ldj.getLDJ_SoundPath(),
+				ldj.getLDJ_MoviePath(), outRoot);
+		request.includeBga = ldj.isLDJ_IncludeBGA();
+		request.includePreview = ldj.isLDJ_IncludePreview();
 		return request;
 	}
 
@@ -278,12 +278,12 @@ public final class MusicSelector extends MainState {
 	 *
 	 * @return 該当する譜面が見つかった場合のみtrue
 	 */
-	private boolean applyIIDXResult(SongData song, IIDXChartRef ref, IIDXConversionService.Result result) {
+	private boolean applyLDJResult(SongData song, LDJChartRef ref, LDJConversionService.Result result) {
 		if (song == null || ref == null || result == null) {
 			return false;
 		}
 		final String token = ref.getDifficulty().getToken();
-		for (IIDXConversionService.Chart chart : result.charts) {
+		for (LDJConversionService.Chart chart : result.charts) {
 			if (token.equalsIgnoreCase(chart.getDifficulty())) {
 				// キャッシュへ移動するとmanifestの絶対パスは無効になるため、必ずresolve()で解決する
 				song.setPath(chart.resolve(result.directory).toString());
@@ -295,60 +295,60 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
-	 * IIDX譜面の変換を開始する。
+	 * LDJ譜面の変換を開始する。
 	 *
 	 * @return キャッシュヒットして譜面を読み込める状態になった場合はtrue。変換を開始した、
 	 *         あるいは開始できなかった場合はfalse(呼び出し元は処理を打ち切る)
 	 */
-	private boolean startIIDXConversion(SongData song, Bar current) {
-		if (iidxConverter == null || iidxProvider == null || iidxTempFiles == null) {
+	private boolean startLDJConversion(SongData song, Bar current) {
+		if (ldjConverter == null || ldjProvider == null || ldjTempFiles == null) {
 			return false;
 		}
-		if (iidxThread != null && iidxThread.isAlive()) {
+		if (ldjThread != null && ldjThread.isAlive()) {
 			// 変換は同時に1件のみ。進行中の変換は中断しない(cancel()は呼ばない)
 			ImGuiNotify.info("LDJ譜面を変換中です。完了までお待ちください");
 			return false;
 		}
-		final IIDXChartRef ref = IIDXChartRef.parse(song.getPath());
+		final LDJChartRef ref = LDJChartRef.parse(song.getPath());
 		if (ref == null) {
 			return false;
 		}
 
-		iidxError = null;
-		iidxResult = null;
+		ldjError = null;
+		ldjResult = null;
 		try {
-			final IIDXConversionService.Result cached = iidxConverter.readCachedResult(newIIDXRequest(ref, null));
-			if (applyIIDXResult(song, ref, cached)) {
+			final LDJConversionService.Result cached = ldjConverter.readCachedResult(newLDJRequest(ref, null));
+			if (applyLDJResult(song, ref, cached)) {
 				// キャッシュヒット。songのパスは実BMSへ書き換え済みなので通常の読み込みフローへ進む
 				return true;
 			}
-		} catch (IIDXConversionService.ConversionException e) {
+		} catch (LDJConversionService.ConversionException e) {
 			logger.warn("iidx2bms: キャッシュの読み込みに失敗しました: {}", e.getMessage());
 		}
 
 		final Path sessionDir;
 		try {
-			sessionDir = iidxTempFiles.createSessionDir(ref.getSongIdDisplay());
+			sessionDir = ldjTempFiles.createSessionDir(ref.getSongIdDisplay());
 		} catch (IOException e) {
 			ImGuiNotify.error("LDJ譜面の作業ディレクトリを作成できません: " + e.getMessage());
 			return false;
 		}
 
-		iidxSong = song;
-		iidxBarAtStart = current;
-		iidxMode = play;
-		iidxProceedRead = true;
-		iidxProgress = 0;
-		iidxStage = "変換を開始しています";
-		IIDXConversionOverlay.show(ref.getSongIdDisplay());
+		ldjSong = song;
+		ldjBarAtStart = current;
+		ldjMode = play;
+		ldjProceedRead = true;
+		ldjProgress = 0;
+		ldjStage = "変換を開始しています";
+		LDJConversionOverlay.show(ref.getSongIdDisplay());
 		ImGuiNotify.info("LDJ譜面を変換しています...");
 		// 変換スレッドから全体設定を読まないよう、UIスレッド側で値を確定させて渡す
-		final int cacheMaxSizeMB = iidxConfig().getLDJ_CacheMaxSizeMB();
+		final int cacheMaxSizeMB = ldjConfig().getLDJ_CacheMaxSizeMB();
 		final Thread thread = new Thread(
-				() -> runIIDXConversion(newIIDXRequest(ref, sessionDir), ref, sessionDir, cacheMaxSizeMB),
+				() -> runLDJConversion(newLDJRequest(ref, sessionDir), ref, sessionDir, cacheMaxSizeMB),
 				"iidx2bms-convert");
 		thread.setDaemon(true);
-		iidxThread = thread;
+		ldjThread = thread;
 		thread.start();
 		return false;
 	}
@@ -356,16 +356,16 @@ public final class MusicSelector extends MainState {
 	/**
 	 * 変換スレッドの本体。UIスレッドからは触らず、結果はフィールド経由で受け渡す
 	 */
-	private void runIIDXConversion(IIDXConversionService.Request request, IIDXChartRef ref, Path sessionDir,
+	private void runLDJConversion(LDJConversionService.Request request, LDJChartRef ref, Path sessionDir,
 			int cacheMaxSizeMB) {
 		try {
-			final IIDXConversionService.Result result = iidxConverter.convert(request,
-					new IIDXConversionService.ProgressListener() {
+			final LDJConversionService.Result result = ldjConverter.convert(request,
+					new LDJConversionService.ProgressListener() {
 						@Override
 						public void onProgress(int percent, String stage) {
-							iidxProgress = percent;
-							iidxStage = stage != null ? stage : "";
-							IIDXConversionOverlay.update(percent, iidxStage);
+							ldjProgress = percent;
+							ldjStage = stage != null ? stage : "";
+							LDJConversionOverlay.update(percent, ldjStage);
 						}
 
 						@Override
@@ -374,19 +374,19 @@ public final class MusicSelector extends MainState {
 						}
 					});
 			// キャッシュへ移動する。移動に失敗しても同じディレクトリが返るため、そのまま使用する
-			final Path promoted = iidxTempFiles.promoteToCache(result.directory, ref.getSongIdDisplay());
-			iidxTempFiles.enforceCacheLimit(cacheMaxSizeMB);
-			iidxResult = new IIDXConversionService.Result(promoted, result.charts, result.title, result.artist,
+			final Path promoted = ldjTempFiles.promoteToCache(result.directory, ref.getSongIdDisplay());
+			ldjTempFiles.enforceCacheLimit(cacheMaxSizeMB);
+			ldjResult = new LDJConversionService.Result(promoted, result.charts, result.title, result.artist,
 					result.genre, result.songIdDisplay);
-			iidxStage = "変換完了";
-			iidxProgress = 100;
-			IIDXConversionOverlay.update(100, "変換完了");
-		} catch (IIDXConversionService.ConversionException e) {
-			iidxTempFiles.discardSessionDir(sessionDir);
-			iidxError = e.getMessage();
+			ldjStage = "変換完了";
+			ldjProgress = 100;
+			LDJConversionOverlay.update(100, "変換完了");
+		} catch (LDJConversionService.ConversionException e) {
+			ldjTempFiles.discardSessionDir(sessionDir);
+			ldjError = e.getMessage();
 		} catch (RuntimeException e) {
-			iidxTempFiles.discardSessionDir(sessionDir);
-			iidxError = e.toString();
+			ldjTempFiles.discardSessionDir(sessionDir);
+			ldjError = e.toString();
 			logger.warn("iidx2bms: 変換中に予期しないエラーが発生しました", e);
 		}
 	}
@@ -394,31 +394,31 @@ public final class MusicSelector extends MainState {
 	/**
 	 * 変換スレッドの完了をrender()から受け取り、成功していれば譜面の読み込みを再開する(UIスレッド)
 	 */
-	private void onIIDXConversionFinished() {
-		if (!iidxProceedRead) {
+	private void onLDJConversionFinished() {
+		if (!ldjProceedRead) {
 			return;
 		}
-		final IIDXConversionService.Result result = iidxResult;
-		final String error = iidxError;
-		final SongData song = iidxSong;
-		final Bar bar = iidxBarAtStart;
-		final BMSPlayerMode mode = iidxMode;
+		final LDJConversionService.Result result = ldjResult;
+		final String error = ldjError;
+		final SongData song = ldjSong;
+		final Bar bar = ldjBarAtStart;
+		final BMSPlayerMode mode = ldjMode;
 
-		iidxProceedRead = false;
-		iidxResult = null;
-		iidxError = null;
-		iidxSong = null;
-		iidxBarAtStart = null;
-		iidxMode = null;
-		iidxProgress = -1;
-		iidxStage = "";
-		IIDXConversionOverlay.hide();
+		ldjProceedRead = false;
+		ldjResult = null;
+		ldjError = null;
+		ldjSong = null;
+		ldjBarAtStart = null;
+		ldjMode = null;
+		ldjProgress = -1;
+		ldjStage = "";
+		LDJConversionOverlay.hide();
 
-		final IIDXChartRef ref = song != null ? IIDXChartRef.parse(song.getPath()) : null;
-		if (applyIIDXResult(song, ref, result)) {
+		final LDJChartRef ref = song != null ? LDJChartRef.parse(song.getPath()) : null;
+		if (applyLDJResult(song, ref, result)) {
 			// 通常の読み込みフロー(resource.setBMSFile → DECIDE遷移)を迂回せず、同じ経路を通す。
 			// 直後のrender()のplay消費ブロックに二重に拾われないよう、読み込み後はplayを戻す
-			// パスはapplyIIDXResultで実BMSへ書き換え済みのため、LDJ由来であることを明示して渡す
+			// パスはapplyLDJResultで実BMSへ書き換え済みのため、LDJ由来であることを明示して渡す
 			play = mode;
 			readChart(song, bar, true);
 			play = null;
@@ -490,9 +490,9 @@ public final class MusicSelector extends MainState {
 		timer.switchTimer(TIMER_IR_CONNECT_SUCCESS, irstate == RankingData.FINISH);
 		timer.switchTimer(TIMER_IR_CONNECT_FAIL, irstate == RankingData.FAIL);
 
-		if (iidxThread != null && !iidxThread.isAlive()) {
-			iidxThread = null;
-			onIIDXConversionFinished();
+		if (ldjThread != null && !ldjThread.isAlive()) {
+			ldjThread = null;
+			onLDJConversionFinished();
 		}
 		if (play != null) {
 			if (current instanceof SongBar) {
@@ -586,26 +586,26 @@ public final class MusicSelector extends MainState {
 
 	public void readChart(SongData song, Bar current) {
 		// 変換済みのLDJ譜面はパスが実BMSへ書き換わっているため、仮想スコアキーの有無でも判定する
-		readChart(song, current, IIDXSongProvider.isIIDXPath(song.getPath()) || song.isIIDXChart());
+		readChart(song, current, LDJSongProvider.isLDJPath(song.getPath()) || song.isLDJChart());
 	}
 
 	/**
-	 * @param fromIIDX LDJ(IIDX)由来の譜面として読み込むか。変換完了後の再読み込みでは、パスが
+	 * @param fromLDJ LDJ由来の譜面として読み込むか。変換完了後の再読み込みでは、パスが
 	 *                実BMSへ書き換え済みでパスからは判定できないため、呼び出し元が明示する
 	 */
-	public void readChart(SongData song, Bar current, boolean fromIIDX) {
-		if (IIDXSongProvider.isIIDXPath(song.getPath())) {
+	public void readChart(SongData song, Bar current, boolean fromLDJ) {
+		if (LDJSongProvider.isLDJPath(song.getPath())) {
 			// 変換でパスが実ファイルへ書き換わっても仮想スコアキーを失わないよう、ここで固定する。
-			// キャッシュヒット時はstartIIDXConversion内で同期的にパスが書き換わるため、その前に呼ぶ必要がある
-			song.setIIDXScoreKey(song.getSha256());
-			if (!startIIDXConversion(song, current)) {
+			// キャッシュヒット時はstartLDJConversion内で同期的にパスが書き換わるため、その前に呼ぶ必要がある
+			song.setLDJScoreKey(song.getSha256());
+			if (!startLDJConversion(song, current)) {
 				// 変換を開始した、または開始できなかった。完了時にrender()から読み直す
 				return;
 			}
 			// キャッシュヒット。songのパスは実BMSファイルへ書き換え済みなので通常フローへ進む
 		}
 		resource.clear();
-		resource.setFromIIDX(fromIIDX);
+		resource.setFromLDJ(fromLDJ);
 		if (resource.setBMSFile(song, play)) {
 			// TODO 表名、フォルダ名をPlayerResource上でも重複実施している
 			final Queue<DirectoryBar> dir = manager.getDirectory();

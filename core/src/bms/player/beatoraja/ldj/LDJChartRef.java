@@ -1,19 +1,19 @@
-package bms.player.beatoraja.iidx;
+package bms.player.beatoraja.ldj;
 
 import bms.model.Mode;
 
 /**
- * 仮想IIDXフォルダが扱う1譜面の参照。実ファイルは存在せず、
+ * 仮想LDJフォルダが扱う1譜面の参照。実ファイルは存在せず、
  * {@code iidx://<songId>/<difficulty>} 形式のパスで識別する。
  *
  * @author endlessdream
  */
-public class IIDXChartRef {
+public class LDJChartRef {
 
 	public static final String SCHEME = "iidx://";
 
 	/**
-	 * IIDXの難易度。トークンはcli_convert.pyが返すマニフェストと共通
+	 * LDJの難易度。トークンはcli_convert.pyが返すマニフェストと共通
 	 */
 	public enum Difficulty {
 		SPB("spb", 1, false),
@@ -72,7 +72,7 @@ public class IIDXChartRef {
 	private final String songIdDisplay;
 	private final Difficulty difficulty;
 
-	public IIDXChartRef(String songId, Difficulty difficulty) {
+	public LDJChartRef(String songId, Difficulty difficulty) {
 		this.songId = songId;
 		this.songIdDisplay = toDisplayId(songId);
 		this.difficulty = difficulty;
@@ -108,15 +108,15 @@ public class IIDXChartRef {
 	/**
 	 * 仮想パスかどうかを判定する
 	 */
-	public static boolean isIIDXPath(String path) {
+	public static boolean isLDJPath(String path) {
 		return path != null && path.startsWith(SCHEME);
 	}
 
 	/**
 	 * 仮想パスを解析する。形式が不正な場合はnull
 	 */
-	public static IIDXChartRef parse(String path) {
-		if (!isIIDXPath(path)) {
+	public static LDJChartRef parse(String path) {
+		if (!isLDJPath(path)) {
 			return null;
 		}
 		String body = path.substring(SCHEME.length());
@@ -129,7 +129,7 @@ public class IIDXChartRef {
 		if (difficulty == null) {
 			return null;
 		}
-		return new IIDXChartRef(songId, difficulty);
+		return new LDJChartRef(songId, difficulty);
 	}
 
 	/**

@@ -4,7 +4,7 @@ import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 
 /**
- * IIDX(iidx2bms)の☆レベル別の仮想フォルダ。
+ * LDJ(iidx2bms)の☆レベル別の仮想フォルダ。
  *
  * 実ファイルを持たないため {@link FolderData} を合成して {@link FolderBar} を継承する
  * (BarRenderer は FolderBar 以外の DirectoryBar を描画しない)。
@@ -16,11 +16,11 @@ import bms.player.beatoraja.song.FolderData;
  *
  * @author endlessdream
  */
-public class IIDXStarFolderBar extends FolderBar {
+public class LDJStarFolderBar extends FolderBar {
 
 	private final SongBar[] songs;
 
-	public IIDXStarFolderBar(MusicSelector selector, String title, SongBar[] songs) {
+	public LDJStarFolderBar(MusicSelector selector, String title, SongBar[] songs) {
 		super(selector, createFolderData(title), "");
 		this.songs = songs != null ? songs : new SongBar[0];
 	}

@@ -1,4 +1,4 @@
-package bms.player.beatoraja.iidx;
+package bms.player.beatoraja.ldj;
 
 import static bms.player.beatoraja.modmenu.ImGuiRenderer.windowHeight;
 import static bms.player.beatoraja.modmenu.ImGuiRenderer.windowWidth;
@@ -9,7 +9,7 @@ import imgui.flag.ImGuiCond;
 import imgui.flag.ImGuiWindowFlags;
 
 /**
- * IIDX譜面の変換進捗を画面中央に表示するオーバーレイ。
+ * LDJ譜面の変換進捗を画面中央に表示するオーバーレイ。
  *
  * <p>
  * ImGuiのフレームは{@code MainController.render()}が{@code ImGuiRenderer}経由で
@@ -20,7 +20,7 @@ import imgui.flag.ImGuiWindowFlags;
  *
  * @author endlessdream
  */
-public class IIDXConversionOverlay {
+public class LDJConversionOverlay {
 
 	/**
 	 * オーバーレイの幅(px)
@@ -38,7 +38,7 @@ public class IIDXConversionOverlay {
 
 	private static volatile String stage = "";
 
-	private IIDXConversionOverlay() {
+	private LDJConversionOverlay() {
 	}
 
 	/**

@@ -1,4 +1,4 @@
-package bms.player.beatoraja.iidx;
+package bms.player.beatoraja.ldj;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,16 +20,16 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 
 import bms.model.Mode;
-import bms.player.beatoraja.iidx.IIDXChartRef.Difficulty;
+import bms.player.beatoraja.ldj.LDJChartRef.Difficulty;
 import bms.player.beatoraja.select.bar.SongBar;
 import bms.player.beatoraja.song.SongData;
 
 /**
- * iidx2bmsの {@code music_data/music_data.json} を読み、仮想IIDXフォルダに並べる譜面を組み立てる。
+ * iidx2bmsの {@code music_data/music_data.json} を読み、仮想LDJフォルダに並べる譜面を組み立てる。
  *
  * <p>ここで作る {@link SongData} は実ファイルを持たない。パスは
  * {@code iidx://<songId>/<difficulty>} という仮想パスで、実際のBMSへは選曲時に
- * {@link IIDXConversionService} が変換した結果で置き換わる。</p>
+ * {@link LDJConversionService} が変換した結果で置き換わる。</p>
  *
  * <p>変換前は生成されるBMSのハッシュが分からないため、仮のmd5/sha256を入れておく。
  * これは「空でないこと」と「譜面ごとに一意であること」だけが要件で、変換が成功した
@@ -38,9 +38,9 @@ import bms.player.beatoraja.song.SongData;
  *
  * @author endlessdream
  */
-public class IIDXSongProvider {
+public class LDJSongProvider {
 
-	private static final Logger logger = LoggerFactory.getLogger(IIDXSongProvider.class);
+	private static final Logger logger = LoggerFactory.getLogger(LDJSongProvider.class);
 
 	/** music_data.json を置くディレクトリ名 */
 	public static final String MUSIC_DATA_DIRECTORY = "music_data";
@@ -56,15 +56,15 @@ public class IIDXSongProvider {
 	private final Path musicDataPath;
 
 	/** 読み込み済みの曲メタデータ。{@link #load()} が設定する */
-	private List<IIDXChartMeta> charts = Collections.emptyList();
+	private List<LDJChartMeta> charts = Collections.emptyList();
 
-	private Map<String, IIDXChartMeta> chartsById = Collections.emptyMap();
+	private Map<String, LDJChartMeta> chartsById = Collections.emptyMap();
 
 	private boolean loadAttempted;
 
 	private boolean available;
 
-	public IIDXSongProvider(String projectRoot) {
+	public LDJSongProvider(String projectRoot) {
 		this.projectRoot = projectRoot == null ? "" : projectRoot.trim();
 		this.musicDataPath = this.projectRoot.isEmpty() ? null
 				: Paths.get(this.projectRoot).resolve(MUSIC_DATA_DIRECTORY).resolve(MUSIC_DATA_FILE);
@@ -82,7 +82,7 @@ public class IIDXSongProvider {
 	}
 
 	/**
-	 * music_data.json が読める状態にあるか。読めない場合はIIDXフォルダを出さない
+	 * music_data.json が読める状態にあるか。読めない場合はLDJフォルダを出さない
 	 */
 	public boolean isAvailable() {
 		load();
@@ -92,7 +92,7 @@ public class IIDXSongProvider {
 	/**
 	 * 読み込んだ曲メタデータ(読み取り専用)
 	 */
-	public List<IIDXChartMeta> getCharts() {
+	public List<LDJChartMeta> getCharts() {
 		load();
 		return Collections.unmodifiableList(charts);
 	}
@@ -100,7 +100,7 @@ public class IIDXSongProvider {
 	/**
 	 * 曲IDからメタデータを引く。見つからなければnull
 	 */
-	public IIDXChartMeta getChart(String songId) {
+	public LDJChartMeta getChart(String songId) {
 		if (songId == null) {
 			return null;
 		}
@@ -108,7 +108,7 @@ public class IIDXSongProvider {
 		return chartsById.get(songId.trim());
 	}
 
-	public IIDXChartMeta getChart(IIDXChartRef ref) {
+	public LDJChartMeta getChart(LDJChartRef ref) {
 		return ref == null ? null : getChart(ref.getSongId());
 	}
 
@@ -129,7 +129,7 @@ public class IIDXSongProvider {
 	public SongBar[] getSongBars(boolean doublePlay) {
 		load();
 		List<SongBar> bars = new ArrayList<SongBar>();
-		for (IIDXChartMeta meta : charts) {
+		for (LDJChartMeta meta : charts) {
 			for (Difficulty difficulty : Difficulty.values()) {
 				if (difficulty.isDoublePlay() != doublePlay || !meta.hasChart(difficulty)) {
 					continue;
@@ -143,9 +143,9 @@ public class IIDXSongProvider {
 	/**
 	 * 変換前の仮の {@link SongData} を作る
 	 */
-	public static SongData createSongData(IIDXChartMeta meta, Difficulty difficulty) {
+	public static SongData createSongData(LDJChartMeta meta, Difficulty difficulty) {
 		SongData song = new SongData();
-		String path = new IIDXChartRef(meta.getSongId(), difficulty).getPath();
+		String path = new LDJChartRef(meta.getSongId(), difficulty).getPath();
 		song.setPath(path);
 		song.setTitle(meta.getTitle());
 		// getFullTitle() は subtitle が null だと落ちるため明示的に空を入れる
@@ -159,22 +159,22 @@ public class IIDXSongProvider {
 		String scoreKey = placeholderHash(path, 64);
 		song.setSha256(scoreKey);
 		// 変換でパスが実ファイルへ書き換わってもLDJ由来だと分かるよう、生成時点でスコアキーを確定する
-		song.setIIDXScoreKey(scoreKey);
+		song.setLDJScoreKey(scoreKey);
 		return song;
 	}
 
 	/**
-	 * {@link IIDXChartRef#isIIDXPath(String)} への委譲
+	 * {@link LDJChartRef#isLDJPath(String)} への委譲
 	 */
-	public static boolean isIIDXPath(String path) {
-		return IIDXChartRef.isIIDXPath(path);
+	public static boolean isLDJPath(String path) {
+		return LDJChartRef.isLDJPath(path);
 	}
 
 	/**
-	 * {@link IIDXChartRef#parse(String)} への委譲
+	 * {@link LDJChartRef#parse(String)} への委譲
 	 */
-	public static IIDXChartRef parsePath(String path) {
-		return IIDXChartRef.parse(path);
+	public static LDJChartRef parsePath(String path) {
+		return LDJChartRef.parse(path);
 	}
 
 	/**
@@ -201,12 +201,12 @@ public class IIDXSongProvider {
 		loadAttempted = true;
 
 		if (musicDataPath == null || !Files.isRegularFile(musicDataPath)) {
-			logger.info("IIDX music_data.json was not found: {}", musicDataPath);
+			logger.info("LDJ music_data.json was not found: {}", musicDataPath);
 			return;
 		}
 
-		List<IIDXChartMeta> parsed = new ArrayList<IIDXChartMeta>();
-		Map<String, IIDXChartMeta> byId = new HashMap<String, IIDXChartMeta>();
+		List<LDJChartMeta> parsed = new ArrayList<LDJChartMeta>();
+		Map<String, LDJChartMeta> byId = new HashMap<String, LDJChartMeta>();
 		try {
 			String json = new String(Files.readAllBytes(musicDataPath), StandardCharsets.UTF_8);
 			JsonValue root = new JsonReader().parse(json);
@@ -216,7 +216,7 @@ public class IIDXSongProvider {
 				return;
 			}
 			for (JsonValue song = data.child; song != null; song = song.next) {
-				IIDXChartMeta meta = parseSong(song);
+				LDJChartMeta meta = parseSong(song);
 				if (meta != null) {
 					parsed.add(meta);
 					byId.put(meta.getSongId(), meta);
@@ -233,16 +233,16 @@ public class IIDXSongProvider {
 		charts = parsed;
 		chartsById = byId;
 		available = true;
-		logger.info("Loaded {} IIDX songs from {}", charts.size(), musicDataPath);
+		logger.info("Loaded {} LDJ songs from {}", charts.size(), musicDataPath);
 	}
 
-	private static IIDXChartMeta parseSong(JsonValue song) {
+	private static LDJChartMeta parseSong(JsonValue song) {
 		String title = song.getString("title", "").trim();
 		String songId = Integer.toString(intValue(song, "song_id"));
 		if (title.isEmpty() || "0".equals(songId)) {
 			return null;
 		}
-		return new IIDXChartMeta(songId, title, song.getString("artist", ""), song.getString("genre", ""),
+		return new LDJChartMeta(songId, title, song.getString("artist", ""), song.getString("genre", ""),
 				intValue(song, "game_version"), intValue(song, "volume"),
 				level(song, Difficulty.SPB), level(song, Difficulty.SPN), level(song, Difficulty.SPH),
 				level(song, Difficulty.SPA), level(song, Difficulty.SPL), level(song, Difficulty.DPB),
