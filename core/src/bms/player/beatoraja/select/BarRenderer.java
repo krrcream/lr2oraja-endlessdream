@@ -155,6 +155,10 @@ public final class BarRenderer {
 					ba.value = ((GradeBar) sd).existsAllSongs() ? 3 : 4;
 				} else if (sd instanceof RandomCourseBar) {
 					ba.value = ((RandomCourseBar) sd).existsAllSongs() ? 2 : 4;
+				} else if (sd instanceof LDJTableFolderBar || sd instanceof LDJTableFileBar
+						|| sd instanceof LDJTableGroupBar) {
+					// LDJの難易度表はFolderBarだが、表の欄と同じ色(スキンのbar-table)で描く
+					ba.value = 2;
 				} else if (sd instanceof FolderBar) {
 					ba.value = 1;
 				} else if (sd instanceof SongBar) {
