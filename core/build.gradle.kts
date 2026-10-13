@@ -13,6 +13,14 @@ java {
     }
 }
 
+// javac decodes .java source bytes with the compiling JVM's default charset unless
+// told otherwise. On hosts where that is not UTF-8 (cp936/GBK on Chinese Windows)
+// every non-ASCII literal - Japanese text, the star in "DP☆11" - is mangled into the
+// compiled class. Pin it so builds are charset-independent.
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
 repositories {
     mavenCentral()
     gradlePluginPortal()
