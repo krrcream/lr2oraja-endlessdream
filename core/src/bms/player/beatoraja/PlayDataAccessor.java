@@ -53,6 +53,10 @@ public final class PlayDataAccessor {
 	 */
 	private ScoreDatabaseAccessor scoredb;
 	/**
+	 * LDJ(IIDX)スコアデータベースアクセサ
+	 */
+	private ScoreDatabaseAccessor ldjscoredb;
+	/**
 	 * スコアログアクセサ
 	 */
 	private ScoreLogDatabaseAccessor scorelogdb;
@@ -72,6 +76,8 @@ public final class PlayDataAccessor {
 			Class.forName("org.sqlite.JDBC");
 			scoredb = new ScoreDatabaseAccessor(playerpath + File.separatorChar + player + File.separatorChar + "score.db");
 			scoredb.createTable();
+			ldjscoredb = new ScoreDatabaseAccessor(getLDJScoreDatabasePath(config));
+			ldjscoredb.createTable();
 			scorelogdb = new ScoreLogDatabaseAccessor(playerpath + File.separatorChar + player + File.separatorChar + "scorelog.db");
 			scoredatalogdb = new ScoreDataLogDatabaseAccessor(playerpath + File.separatorChar + player + File.separatorChar + "scoredatalog.db");
 			// Share scoredb to LR2IR
@@ -81,6 +87,24 @@ public final class PlayDataAccessor {
 		}
 
 		hashkey = "";
+	}
+
+	/**
+	 * LDJ(IIDX)スコアデータベースのパスを返す。
+	 * Config.getLDJ_Sources()が設定されていればそのディレクトリ配下に置く。
+	 * 未設定の場合はscore.dbと同じディレクトリに置く(OSの一時領域には置かない)。
+	 */
+	private static String getLDJScoreDatabasePath(Config config) {
+		String sources = config.getLDJ_Sources();
+		if (sources != null && !sources.isEmpty()) {
+			try {
+				Files.createDirectories(Paths.get(sources));
+			} catch (IOException e) {
+				logger.warn("LDJ_Sourcesディレクトリの準備に失敗:{}", e.getMessage());
+			}
+			return sources + File.separatorChar + "ldjscore.db";
+		}
+		return config.getPlayerpath() + File.separatorChar + config.getPlayername() + File.separatorChar + "ldjscore.db";
 	}
 
 	public PlayerData readPlayerData() {
