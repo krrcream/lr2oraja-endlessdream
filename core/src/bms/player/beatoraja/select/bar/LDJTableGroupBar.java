@@ -11,23 +11,23 @@ import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 
 /**
- * LDJ難易度表のグループ1つ分の仮想フォルダ。子は実際の {@link SongBar}。
+ * 对应 LDJ 难度表 1 个分组的虚拟文件夹.子项是实际的 {@link SongBar}.
  *
- * 表のグループ名がそのままこの欄のタイトルになり、配下に表が指定した譜面が並ぶ。
- * 譜面は {@link LDJTableProvider#createSongBar(LDJTableData.Chart)} で作るため、
- * music_data.json に無い曲・その難易度の譜面が無い曲はここで落ちる。
- * 1曲も残らないグループは {@link #createIfAvailable} が null を返し、
- * 選択しても何も起きないデッドバーにならないようにしている。
+ * 表的分组名直接成为该栏的标题，其下排列表中指定的谱面.
+ * 谱面由 {@link LDJTableProvider#createSongBar(LDJTableData.Chart)} 创建，因此
+ * music_data.json 中没有的曲目，以及没有该难度谱面的曲目会在这里被剔除.
+ * 对于 1 首曲子都不剩的分组，{@link #createIfAvailable} 会返回 null，
+ * 以避免变成选中后什么也不会发生的死栏.
  *
- * 並び順は difficultyValue の昇順。表の中での並び順を決める値と定められており、
- * 同値の場合は json の並び順を保つ(Collections.sort は安定ソート)。
- * この欄はソートを無効化する。有効なままだとユーザーの BarSorter が表の並びを崩す。
+ * 排列顺序为 difficultyValue 升序.该值被规定为决定表内排列顺序的值，
+ * 取值相同时保持 json 的排列顺序(Collections.sort 是稳定排序).
+ * 该栏禁用排序.若保持启用，用户的 BarSorter 会打乱表的排列.
  *
  * @author endlessdream
  */
 public class LDJTableGroupBar extends FolderBar {
 
-	/** difficultyValue 昇順。同値は安定ソートにより json の並び順のまま */
+	/** difficultyValue 升序.取值相同时通过稳定排序保持 json 的排列顺序 */
 	private static final Comparator<LDJTableData.Chart> DIFFICULTY_VALUE_ORDER = new Comparator<LDJTableData.Chart>() {
 		@Override
 		public int compare(LDJTableData.Chart a, LDJTableData.Chart b) {
@@ -44,7 +44,7 @@ public class LDJTableGroupBar extends FolderBar {
 	}
 
 	/**
-	 * @return 表の譜面が1つも残らなかった場合はnull
+	 * @return 若表内谱面 1 首都没剩下则返回 null
 	 */
 	public static LDJTableGroupBar createIfAvailable(MusicSelector selector, LDJTableProvider provider,
 			LDJTableData.Group group) {

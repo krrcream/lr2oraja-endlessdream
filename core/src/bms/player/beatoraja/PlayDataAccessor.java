@@ -53,7 +53,7 @@ public final class PlayDataAccessor {
 	 */
 	private ScoreDatabaseAccessor scoredb;
 	/**
-	 * LDJスコアデータベースアクセサ
+	 * LDJ分数数据库访问器
 	 */
 	private ScoreDatabaseAccessor ldjscoredb;
 	/**
@@ -90,9 +90,9 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * LDJスコアデータベースのパスを返す。
-	 * Config.getLDJ_Sources()が設定されていればそのディレクトリ配下に置く。
-	 * 未設定の場合はscore.dbと同じディレクトリに置く(OSの一時領域には置かない)。
+	 * 返回 LDJ 分数数据库的路径
+	 * 若设置了 Config.getLDJ_Sources()，则置于该目录下
+	 * 未设置时置于与 score.db 相同的目录(不放在 OS 的临时区域)
 	 */
 	private static String getLDJScoreDatabasePath(Config config) {
 		String sources = config.getLDJ_Sources();
@@ -179,15 +179,15 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * スコアデータを読み込む。LDJ譜面の場合は ldjscore.db から読む
+	 * 读取分数数据；LDJ 谱面时从 ldjscore.db 读取
 	 *
 	 * @param model
-	 *            対象のモデル
+	 *            目标模型
 	 * @param lnmode
-	 *            LNモード
+	 *            LN 模式
 	 * @param ldj
-	 *            LDJ譜面の場合はtrue
-	 * @return スコアデータ
+	 *            LDJ 谱面时为 true
+	 * @return 分数数据
 	 */
 	public ScoreData readScoreData(BMSModel model, int lnmode, boolean ldj) {
 		String hash = model.getSHA256();
@@ -211,25 +211,25 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * スコアデータを読み込む。LDJ譜面の場合は ldjscore.db から読む
+	 * 读取分数数据；LDJ 谱面时从 ldjscore.db 读取
 	 *
 	 * @param hash
-	 *            楽曲のハッシュ値(LDJ譜面の場合は iidx:// 由来の仮想ハッシュ)
+	 *            乐曲的哈希值(LDJ 谱面时为 iidx:// 来源的虚拟哈希)
 	 * @param ln
-	 *            対象のbmsが未定義LNを含む場合はtrueを入れる
+	 *            目标 bms 包含未定义 LN 时填入 true
 	 * @param lnmode
-	 *            LNモード
+	 *            LN 模式
 	 * @param ldj
-	 *            LDJ譜面の場合はtrue
-	 * @return スコアデータ
+	 *            LDJ 谱面时为 true
+	 * @return 分数数据
 	 */
 	public ScoreData readScoreData(String hash, boolean ln, int lnmode, boolean ldj) {
 		return (ldj ? ldjscoredb : scoredb).getScoreData(hash, ln ? lnmode : 0);
 	}
 
 	/**
-	 * スコアデータをまとめて読み込み、collectorに渡す。
-	 * LDJ譜面は ldjscore.db から、それ以外は score.db から読む。
+	 * 批量读取分数数据，并传给 collector
+	 * LDJ 谱面从 ldjscore.db 读取，其余从 score.db 读取
 	 * @param collector スコアデータのcollector
 	 * @param songs 楽曲データ
 	 * @param lnmode LNモード
@@ -281,18 +281,18 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * スコアデータを書き込む。LDJ譜面の場合は ldjscore.db に書く
+	 * 写入分数数据；LDJ 谱面时写入 ldjscore.db
 	 *
 	 * @param newscore
-	 *            スコアデータ
+	 *            分数数据
 	 * @param model
-	 *            対象のモデル
+	 *            目标模型
 	 * @param lnmode
-	 *            LNモード
+	 *            LN 模式
 	 * @param updateScore
-	 *            プレイ回数のみ反映する場合はfalse
+	 *            仅反映游玩次数时填 false
 	 * @param ldj
-	 *            LDJ譜面の場合はtrue
+	 *            LDJ 谱面时为 true
 	 */
 	public void writeScoreData(ScoreData newscore, BMSModel model, int lnmode, boolean updateScore, boolean ldj) {
 		ScoreDatabaseAccessor db = ldj ? ldjscoredb : scoredb;

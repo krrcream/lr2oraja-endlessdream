@@ -477,8 +477,8 @@ public class BMSPlayer extends MainState {
 		if (!score) {
 			ImGuiNotify.warning("Score nullifying options enabled. Next play will not be saved");
 		}
-		// LDJ由来の譜面はローカルに成績を残すがIRへは送信しない。
-		// 変換後はパスからLDJ由来と判定できないため、SongDataが持つ仮想スコアキーでも判定する
+		// 源自 LDJ 的谱面在本地保留成绩，但不向 IR 发送
+		// 转换后无法从路径判定是否源自 LDJ，因此也用 SongData 持有的虚拟分数键判定
 		forceNoIRSend |= resource.isFromLDJ()
 				|| (resource.getSongdata() != null && resource.getSongdata().isLDJChart());
 		if (forceNoIRSend) {

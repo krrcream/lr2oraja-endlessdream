@@ -135,7 +135,7 @@ public final class PlayerResource {
 	private String freqString;
 	private boolean forceNoIRSend;
 	/**
-	 * 今回読み込んだ譜面がLDJ由来かどうか。譜面を読み込むたびに設定され、clear()で解除される
+	 * 本次读取的谱面是否来自LDJ，每次读取谱面时设置，由 clear() 解除
 	 */
 	private boolean fromLDJ;
 	// Full list of difficult tables that contains current song
@@ -248,8 +248,8 @@ public final class PlayerResource {
 	}
 
 	/**
-	 * LDJ譜面のスコアキーをモデルへ引き継ぐ。iidx:// の仮想キーは変換後の実BMSの
-	 * 内容ハッシュとは異なるため、変換でパスが書き換わった後もSongData側のキーを使う。
+	 * 将LDJ谱面的分数键继承到模型，iidx:// 的虚拟键与转换后真实BMS的
+	 * 内容哈希不同，因此即使转换后路径被改写，也使用 SongData 侧的键
 	 */
 	private BMSModel applyLDJScoreKey(BMSModel model) {
 		if (model != null && songdata != null && songdata.isLDJChart()) {

@@ -25,16 +25,16 @@ import bms.player.beatoraja.select.bar.SongBar;
 import bms.player.beatoraja.song.SongData;
 
 /**
- * iidx2bmsの {@code music_data/music_data.json} を読み、仮想LDJフォルダに並べる譜面を組み立てる。
+ * 读取 iidx2bms 的 {@code music_data/music_data.json}，组装出排列在虚拟LDJ文件夹中的谱面
  *
- * <p>ここで作る {@link SongData} は実ファイルを持たない。パスは
- * {@code iidx://<songId>/<difficulty>} という仮想パスで、実際のBMSへは選曲時に
- * {@link LDJConversionService} が変換した結果で置き換わる。</p>
+ * <p>这里创建的 {@link SongData} 不持有实际文件，路径是
+ * {@code iidx://<songId>/<difficulty>} 这样的虚拟路径，实际BMS会在选曲时由
+ * {@link LDJConversionService} 转换后的结果替换</p>
  *
- * <p>変換前は生成されるBMSのハッシュが分からないため、仮のmd5/sha256を入れておく。
- * これは「空でないこと」と「譜面ごとに一意であること」だけが要件で、変換が成功した
- * 時点で実ハッシュに上書きされる。仮ハッシュの間は選曲リストにランプが出ない
- * (v1の既知の制限)。</p>
+ * <p>转换前无法得知将要生成的BMS的哈希，因此先写入临时的 md5/sha256
+ * 这里只要求“非空”与“每个谱面唯一”，转换成功
+ * 时会被真实哈希覆盖，在仍是临时哈希的期间，选曲列表中不会出现通关灯
+ * (v1 的已知限制)</p>
  *
  * @author endlessdream
  */
@@ -42,20 +42,20 @@ public class LDJSongProvider {
 
 	private static final Logger logger = LoggerFactory.getLogger(LDJSongProvider.class);
 
-	/** music_data.json を置くディレクトリ名 */
+	/** 存放 music_data.json 的目录名 */
 	public static final String MUSIC_DATA_DIRECTORY = "music_data";
 
-	/** 曲メタデータのファイル名 */
+	/** 曲目元数据的文件名 */
 	public static final String MUSIC_DATA_FILE = "music_data.json";
 
-	/** レベルが格納されているキーの接尾辞 (例: "SPA_level") */
+	/** 存放等级的键的后缀 (例: "SPA_level") */
 	private static final String LEVEL_SUFFIX = "_level";
 
 	private final String projectRoot;
 
 	private final Path musicDataPath;
 
-	/** 読み込み済みの曲メタデータ。{@link #load()} が設定する */
+	/** 已读取的曲目元数据，由 {@link #load()} 设置 */
 	private List<LDJChartMeta> charts = Collections.emptyList();
 
 	private Map<String, LDJChartMeta> chartsById = Collections.emptyMap();
@@ -75,14 +75,14 @@ public class LDJSongProvider {
 	}
 
 	/**
-	 * 参照している music_data.json のパス。プロジェクトルート未設定ならnull
+	 * 所引用的 music_data.json 的路径，未设置项目根目录时为 null
 	 */
 	public Path getMusicDataPath() {
 		return musicDataPath;
 	}
 
 	/**
-	 * music_data.json が読める状態にあるか。読めない場合はLDJフォルダを出さない
+	 * music_data.json 是否处于可读状态，不可读时不显示LDJ文件夹
 	 */
 	public boolean isAvailable() {
 		load();
@@ -90,7 +90,7 @@ public class LDJSongProvider {
 	}
 
 	/**
-	 * 読み込んだ曲メタデータ(読み取り専用)
+	 * 已读取的曲目元数据(只读)
 	 */
 	public List<LDJChartMeta> getCharts() {
 		load();
@@ -98,7 +98,7 @@ public class LDJSongProvider {
 	}
 
 	/**
-	 * 曲IDからメタデータを引く。見つからなければnull
+	 * 根据曲目ID取出元数据，找不到时返回 null
 	 */
 	public LDJChartMeta getChart(String songId) {
 		if (songId == null) {
@@ -113,18 +113,18 @@ public class LDJSongProvider {
 	}
 
 	/**
-	 * 指定したモードに対応する譜面を列挙する。
+	 * 枚举与指定模式对应的谱面
 	 *
-	 * <p>レベル0の難易度は収録されていないものとして除く。</p>
+	 * <p>等级为 0 的难度视为未收录，予以排除</p>
 	 *
-	 * @param mode 選曲画面のモード。7KならSP、14KならDPのみ
+	 * @param mode 选曲画面的模式，7K 时仅 SP，14K 时仅 DP
 	 */
 	public SongBar[] getSongBars(Mode mode) {
 		return getSongBars(mode == Mode.BEAT_14K);
 	}
 
 	/**
-	 * ダブルプレイ譜面を列挙するかどうかを直接指定する版
+	 * 直接指定是否枚举双人谱面(double play)的版本
 	 */
 	public SongBar[] getSongBars(boolean doublePlay) {
 		load();
@@ -141,14 +141,14 @@ public class LDJSongProvider {
 	}
 
 	/**
-	 * 変換前の仮の {@link SongData} を作る
+	 * 创建转换前的临时 {@link SongData}
 	 */
 	public static SongData createSongData(LDJChartMeta meta, Difficulty difficulty) {
 		SongData song = new SongData();
 		String path = new LDJChartRef(meta.getSongId(), difficulty).getPath();
 		song.setPath(path);
 		song.setTitle(meta.getTitle());
-		// getFullTitle() は subtitle が null だと落ちるため明示的に空を入れる
+		// getFullTitle() 在 subtitle 为 null 时会崩溃，因此显式填入空字符串
 		song.setSubtitle("");
 		song.setArtist(meta.getArtist() == null ? "" : meta.getArtist());
 		song.setGenre(meta.getGenre() == null ? "" : meta.getGenre());
@@ -158,27 +158,27 @@ public class LDJSongProvider {
 		song.setMd5(placeholderHash(path, 32));
 		String scoreKey = placeholderHash(path, 64);
 		song.setSha256(scoreKey);
-		// 変換でパスが実ファイルへ書き換わってもLDJ由来だと分かるよう、生成時点でスコアキーを確定する
+		// 为了让路径在转换时被改写为实际文件后仍能看出源自LDJ，在生成时就确定分数键
 		song.setLDJScoreKey(scoreKey);
 		return song;
 	}
 
 	/**
-	 * {@link LDJChartRef#isLDJPath(String)} への委譲
+	 * 委托给 {@link LDJChartRef#isLDJPath(String)}
 	 */
 	public static boolean isLDJPath(String path) {
 		return LDJChartRef.isLDJPath(path);
 	}
 
 	/**
-	 * {@link LDJChartRef#parse(String)} への委譲
+	 * 委托给 {@link LDJChartRef#parse(String)}
 	 */
 	public static LDJChartRef parsePath(String path) {
 		return LDJChartRef.parse(path);
 	}
 
 	/**
-	 * 仮パスから決まる仮ハッシュ。譜面ごとに一意で、内容が同じなら常に同じ値になる。
+	 * 由临时路径决定的临时哈希，每个谱面唯一，内容相同时始终为相同的值
 	 */
 	private static String placeholderHash(String path, int length) {
 		try {
@@ -189,7 +189,7 @@ public class LDJSongProvider {
 			}
 			return builder.substring(0, Math.min(length, builder.length()));
 		} catch (NoSuchAlgorithmException e) {
-			// SHA-256 は必ず存在するが、万一の場合は空でない適当な値で代替する
+			// SHA-256 必定存在，但万一出现异常时用非空的适当值代替
 			return Integer.toHexString(path.hashCode());
 		}
 	}
@@ -250,7 +250,7 @@ public class LDJSongProvider {
 				level(song, Difficulty.DPL));
 	}
 
-	/** レベルは "SPA_level" のように大文字の難易度トークン+接尾辞で格納されている */
+	/** 等级以 "SPA_level" 这样的大写难度记号+后缀的形式存放 */
 	private static int level(JsonValue song, Difficulty difficulty) {
 		return intValue(song, difficulty.name() + LEVEL_SUFFIX);
 	}

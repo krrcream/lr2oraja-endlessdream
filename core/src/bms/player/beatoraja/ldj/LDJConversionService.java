@@ -20,10 +20,10 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 
 /**
- * iidx2bmsへのブリッジスクリプト({@code cli_convert.py})を起動してLDJ譜面をBMSへ変換する。
+ * 启动通往 iidx2bms 的桥接脚本({@code cli_convert.py})，将 LDJ 谱面转换为 BMS
  *
- * <p>スクリプトは1行1JSONで進捗と結果をstdoutへ出力する。コンバータ本体のログはstderrへ
- * 流れるため、JSONとして解釈できない行は単に読み飛ばす。</p>
+ * <p>脚本以每行一个 JSON 的形式向 stdout 输出进度和结果，转换器本体的日志输出到 stderr，
+ * 因此无法按 JSON 解析的行直接跳过</p>
  *
  * @author endlessdream
  */
@@ -33,20 +33,20 @@ public class LDJConversionService {
 
 	private static final Logger converterLogger = LoggerFactory.getLogger("iidx2bms");
 
-	/** 変換全体の既定タイムアウト(秒) */
+	/** 整个转换的默认超时时间(秒) */
 	public static final int DEFAULT_TIMEOUT_SECONDS = 180;
 
-	/** 変換結果ディレクトリへ書き出されるマニフェストのファイル名 */
+	/** 写入转换结果目录的清单文件名 */
 	public static final String MANIFEST_FILE = "manifest.json";
 
 	private final LDJTempFileManager tempFiles;
 
-	/** 使用するPythonインタプリタの起動コマンド(例: ["py", "-3"])。未検出ならnull */
+	/** 所使用的 Python 解释器的启动命令(例: ["py", "-3"])，未检测到则为 null */
 	private List<String> interpreter;
 
 	private boolean interpreterResolved;
 
-	/** 実行中のプロセス。キャンセル用 */
+	/** 正在运行的进程，用于取消 */
 	private volatile Process currentProcess;
 	private volatile boolean cancelled;
 
@@ -55,8 +55,8 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * 変換結果1譜面分。{@code file}はマニフェストが報告した絶対パスであり、
-	 * キャッシュへ移動すると無効になるため{@link #resolve(Path)}で解決すること。
+	 * 单个谱面的转换结果，{@code file}是清单所报告的绝对路径，
+	 * 移动到缓存后会失效，因此需通过{@link #resolve(Path)}解析
 	 */
 	public static class Chart {
 		private final String difficulty;
@@ -84,7 +84,7 @@ public class LDJConversionService {
 		}
 
 		/**
-		 * 変換ディレクトリを基準にした実際の譜面ファイルのパス
+		 * 以转换目录为基准的实际谱面文件路径
 		 */
 		public Path resolve(Path baseDir) {
 			if (file != null && !file.isEmpty()) {
@@ -95,7 +95,7 @@ public class LDJConversionService {
 						return baseDir.resolve(relative);
 					}
 				} catch (IllegalArgumentException e) {
-					// 別ドライブ上にある場合はファイル名から解決する
+					// 位于其他驱动器上时按文件名解析
 				}
 			}
 			return baseDir.resolve(name);
@@ -103,7 +103,7 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * 変換結果。{@code resultDir}は移動後には使えないため、確定した配置先も保持する
+	 * 转换结果，{@code resultDir}在移动后不可用，因此同时保留已确定的存放位置
 	 */
 	public static class Result {
 		public final Path directory;
@@ -124,7 +124,7 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * 変換要求
+	 * 转换请求
 	 */
 	public static class Request {
 		public final String songId;
@@ -149,7 +149,7 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * 進捗通知先。呼び出し元スレッドから呼ばれる
+	 * 进度通知目标，由调用方线程调用
 	 */
 	public interface ProgressListener {
 		void onProgress(int percent, String stage);
@@ -158,7 +158,7 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * 変換に失敗したことを示す。メッセージはそのままユーザーへ通知できる
+	 * 表示转换失败，消息可直接通知给用户
 	 */
 	public static class ConversionException extends Exception {
 		private static final long serialVersionUID = 1L;
@@ -173,7 +173,7 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * Pythonインタプリタが見つからない場合のエラー
+	 * 未找到 Python 解释器时的错误
 	 */
 	public static class InterpreterNotFoundException extends ConversionException {
 		private static final long serialVersionUID = 1L;
@@ -184,7 +184,7 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * 進行中の変換を中断する。プロセスを強制終了する
+	 * 中断进行中的转换，强制结束进程
 	 */
 	public void cancel() {
 		cancelled = true;
@@ -199,7 +199,7 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * 変換を実行する。この呼び出しはブロックするため、呼び出し側で別スレッドに載せること
+	 * 执行转换，此调用会阻塞，因此调用方需将其放到其他线程上
 	 */
 	public Result convert(Request request, ProgressListener listener) throws ConversionException {
 		if (tempFiles.getBridgeScript() == null && !tempFiles.prepare()) {
@@ -303,8 +303,8 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * キャッシュ済みの変換結果を読み込む。マニフェストが無い、壊れている、
-	 * あるいは変換条件が現在のリクエストと一致しない場合はnullを返す
+	 * 读取已缓存的转换结果，若清单不存在或已损坏，
+	 * 或者转换条件与当前请求不一致，则返回 null
 	 */
 	public Result readCachedResult(Request request) throws ConversionException {
 		Path cacheDir = tempFiles.getCachedSongDir(request.songIdDisplay);
@@ -325,7 +325,7 @@ public class LDJConversionService {
 			logger.warn("iidx2bms: the cached manifest {} is not valid JSON", manifest);
 			return null;
 		}
-		// stagefileは譜面の内容に影響しないため譜面キャッシュの条件からは除外する
+		// stagefile 不影响谱面内容，因此从谱面缓存条件中排除
 		JsonValue options = payload.get("options");
 		if (options == null
 				|| options.getBoolean("include_bga", true) != request.includeBga
@@ -344,9 +344,9 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * @param directory 譜面が実際に置かれているディレクトリ。キャッシュから読み込む場合は
-	 *                  マニフェストの{@code result_dir}が移動前の場所を指しているため、
-	 *                  キャッシュディレクトリを明示的に渡す
+	 * @param directory 谱面实际所在的目录，从缓存读取时，
+	 *                  由于清单的{@code result_dir}指向移动前的位置，
+	 *                  需显式传入缓存目录
 	 */
 	private Result parseResult(JsonValue message, Request request, Path directory) throws ConversionException {
 		List<Chart> charts = new ArrayList<Chart>();
@@ -407,7 +407,7 @@ public class LDJConversionService {
 						process.destroyForcibly();
 					}
 				} catch (InterruptedException e) {
-					// 正常終了
+					// 正常结束
 				}
 			}
 		}, "iidx2bms-watchdog");
@@ -417,9 +417,9 @@ public class LDJConversionService {
 	}
 
 	/**
-	 * Pythonインタプリタを検出する。結果はインスタンス内でキャッシュする
+	 * 检测 Python 解释器，结果在实例内缓存
 	 *
-	 * @return 起動コマンド。見つからなければnull
+	 * @return 启动命令，未找到则为 null
 	 */
 	public List<String> resolveInterpreter(Request request) {
 		if (interpreterResolved) {
@@ -445,7 +445,7 @@ public class LDJConversionService {
 		List<List<String>> candidates = new ArrayList<List<String>>();
 		if (projectRoot != null && !projectRoot.isEmpty()) {
 			Path root = Paths.get(projectRoot);
-			// iidx2bms同梱の仮想環境を最優先する
+			// 优先使用 iidx2bms 自带的虚拟环境
 			Path windows = root.resolve(".venv").resolve("Scripts").resolve("python.exe");
 			Path posix = root.resolve(".venv").resolve("bin").resolve("python");
 			if (Files.isRegularFile(windows)) {

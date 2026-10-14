@@ -4,15 +4,15 @@ import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 
 /**
- * LDJ(iidx2bms)の☆レベル別の仮想フォルダ。
+ * LDJ(iidx2bms)按☆等级划分的虚拟文件夹.
  *
- * 実ファイルを持たないため {@link FolderData} を合成して {@link FolderBar} を継承する
- * (BarRenderer は FolderBar 以外の DirectoryBar を描画しない)。
- * 合成フォルダの path は空文字にする。null にすると EventFactory 側の
- * updateSong() / エクスプローラオープンが例外になる。
+ * 由于没有实际文件，因此合成 {@link FolderData} 并继承 {@link FolderBar}
+ * (BarRenderer 不绘制 FolderBar 以外的 DirectoryBar).
+ * 合成文件夹的 path 设为空字符串.若设为 null，则 EventFactory 侧的
+ * updateSong() / 打开资源管理器会抛异常.
  *
- * {@link FolderBar#updateFolderStatus()} は実ファイル前提の CRC32 と SQLite 問い合わせを
- * 行うため、何もしないよう上書きする。
+ * {@link FolderBar#updateFolderStatus()} 会进行以实际文件为前提的 CRC32 与 SQLite 查询，
+ * 因此覆盖为空实现.
  *
  * @author endlessdream
  */

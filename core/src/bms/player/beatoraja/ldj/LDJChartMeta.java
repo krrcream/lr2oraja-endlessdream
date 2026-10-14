@@ -3,8 +3,8 @@ package bms.player.beatoraja.ldj;
 import bms.player.beatoraja.ldj.LDJChartRef.Difficulty;
 
 /**
- * music_data.json に含まれる1曲分のメタデータ。
- * レベルは譜面ごと、それ以外は曲単位の情報。
+ * music_data.json 中包含的单曲元数据.
+ * 等级按谱面区分，其余为以曲目为单位的信息.
  *
  * @author endlessdream
  */
@@ -80,7 +80,7 @@ public class LDJChartMeta {
 	}
 
 	/**
-	 * 指定した難易度のレベル。未収録は0
+	 * 指定难度的等级，未收录时为0
 	 */
 	public int getLevel(Difficulty difficulty) {
 		if (difficulty == null) {
@@ -113,7 +113,7 @@ public class LDJChartMeta {
 	}
 
 	/**
-	 * 指定した難易度の譜面が存在するか
+	 * 指定难度的谱面是否存在
 	 */
 	public boolean hasChart(Difficulty difficulty) {
 		return getLevel(difficulty) > 0;

@@ -157,7 +157,7 @@ public final class BarRenderer {
 					ba.value = ((RandomCourseBar) sd).existsAllSongs() ? 2 : 4;
 				} else if (sd instanceof LDJTableFolderBar || sd instanceof LDJTableFileBar
 						|| sd instanceof LDJTableGroupBar) {
-					// LDJの難易度表はFolderBarだが、表の欄と同じ色(スキンのbar-table)で描く
+					// LDJ 的难度表虽然是 FolderBar，但用与表的栏位相同的颜色(skin 的 bar-table)绘制
 					ba.value = 2;
 				} else if (sd instanceof FolderBar) {
 					ba.value = 1;

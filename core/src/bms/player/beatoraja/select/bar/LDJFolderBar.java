@@ -10,34 +10,34 @@ import bms.player.beatoraja.song.FolderData;
 import bms.player.beatoraja.song.SongData;
 
 /**
- * LDJ(iidx2bms)の仮想ルートフォルダ(LDJ)。
+ * LDJ(iidx2bms)的虚拟根文件夹(LDJ).
  *
- * 先頭に難易度表の入口({@link LDJTableFolderBar})を置き、続けて
- * iidx2bms の music_data.json から生成した {@link SongBar} を ☆レベル別の
- * {@link LDJStarFolderBar} に分けて並べる。SP☆1〜☆12 と DP☆1〜☆12 を1画面に置く。
+ * 在开头放置难度表的入口({@link LDJTableFolderBar})，接着
+ * 把由 iidx2bms 的 music_data.json 生成的 {@link SongBar} 按☆等级
+ * 分别放入 {@link LDJStarFolderBar} 排列.把 SP☆1～☆12 与 DP☆1～☆12 放在同一画面中.
  *
- * 難易度表のjsonが1つも読めない場合は Table 欄を挿さらない。表の有無で☆欄の
- * 構成が変わることはない。
+ * 连 1 个难度表 json 都读不到时不插入 Table 栏.☆栏的
+ * 构成不会因有无表而改变.
  *
- * {@link FolderData} を合成して {@link FolderBar} を継承する理由と、合成フォルダの
- * path を空文字にする理由は {@link LDJStarFolderBar} と同じ。
+ * 合成 {@link FolderData} 并继承 {@link FolderBar} 的理由，以及合成文件夹的
+ * path 设为空字符串的理由，与 {@link LDJStarFolderBar} 相同.
  *
- * このフォルダ自身はソートを無効化する。☆欄はタイトル順に並べる必要があるが、
- * {@link BarSorter} は非 SongBar 同士をタイトルで比較するため、有効なままだと
- * ☆1, ☆10, ☆11, ☆12, ☆2... と崩れる。各☆欄の中の楽曲は通常どおりソートされる。
+ * 该文件夹自身禁用排序.☆栏需要按标题顺序排列，但
+ * {@link BarSorter} 会对非 SongBar 之间按标题进行比较，因此若保持启用
+ * 就会被打乱成 ☆1, ☆10, ☆11, ☆12, ☆2... 这种顺序.各☆栏中的乐曲仍照常排序.
  *
  * @author endlessdream
  */
 public class LDJFolderBar extends FolderBar {
 
-	/** ☆レベルとして扱う最大値。これを超えるレベルは☆12に丸める */
+	/** 作为☆等级处理的最大值.超过该等级的会被归为 ☆12 */
 	private static final int MAX_STAR = 12;
 
 	private final Bar[] children;
 
 	/**
-	 * @param selector 子の☆欄を作るために引き継ぐ
-	 * @param provider 難易度表jsonの譜面を引くために引き継ぐ
+	 * @param selector 为创建子☆栏而传递
+	 * @param provider 为查询难度表 json 的谱面而传递
 	 */
 	public LDJFolderBar(MusicSelector selector, LDJSongProvider provider, SongBar[] spBars, SongBar[] dpBars) {
 		super(selector, createFolderData("LDJ"), "");
@@ -60,10 +60,10 @@ public class LDJFolderBar extends FolderBar {
 	}
 
 	/**
-	 * ☆1〜☆12 のうち1曲以上あるレベルの欄だけを昇順で追加する。
+	 * 只把 ☆1～☆12 中有 1 首以上乐曲的等级栏按升序追加.
 	 *
-	 * 空の☆欄は BarManager の削除フィルタ(SongBar/GradeBar のみ対象)で除去されず、
-	 * 選択しても何も起きないデッドバーになるため作らない。
+	 * 空的☆栏不会被 BarManager 的删除过滤器(仅对 SongBar/GradeBar 生效)去除，
+	 * 会变成选中后什么也不会发生的死栏，因此不创建.
 	 */
 	private static void addStarBars(List<Bar> out, MusicSelector selector, SongBar[] bars, String prefix) {
 		if (bars == null) {
@@ -82,7 +82,7 @@ public class LDJFolderBar extends FolderBar {
 		}
 	}
 
-	/** level が未設定(0以下)なら☆1、☆12を超えるなら☆12に丸める */
+	/** level 未设置(0 以下)时为 ☆1，超过 ☆12 时归为 ☆12 */
 	private static int starLevel(SongBar bar) {
 		final SongData song = bar.getSongData();
 		final int level = song != null ? song.getLevel() : 0;

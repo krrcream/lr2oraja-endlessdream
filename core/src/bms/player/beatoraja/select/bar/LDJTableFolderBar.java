@@ -12,18 +12,18 @@ import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 
 /**
- * LDJ難易度表の入口となる仮想フォルダ(LDJ の先頭に出る "Table")。
+ * 作为 LDJ 难度表入口的虚拟文件夹(出现在 LDJ 开头的 "Table").
  *
- * カレントディレクトリの {@code LDJ_table} 配下のjson1ファイルが子の
- * {@link LDJTableFileBar} 1つに対応する。ディレクトリが無い、jsonが1つも読めない、
- * といった場合は {@link #createIfAvailable} が null を返すので、LDJのルートには
- * 何も挿さらない。この欄もソートを無効化する。
+ * 当前目录下 {@code LDJ_table} 中的 json1 个文件与子项的
+ * {@link LDJTableFileBar} 1 个对应.若目录不存在，连 1 个 json 都读不到，
+ * 等情况时，{@link #createIfAvailable} 会返回 null，因此 LDJ 的根下
+ * 不会插入任何内容.该栏也禁用排序.
  *
  * @author endlessdream
  */
 public class LDJTableFolderBar extends FolderBar {
 
-	/** LDJ のルートで一番上に出す欄の名前 */
+	/** 在 LDJ 的根中最上方显示的栏名 */
 	private static final String TITLE = "Table";
 
 	private static final Logger logger = LoggerFactory.getLogger(LDJTableFolderBar.class);
@@ -37,7 +37,7 @@ public class LDJTableFolderBar extends FolderBar {
 	}
 
 	/**
-	 * @return {@code LDJ_table} が無い、または読める表が1つも無かった場合はnull
+	 * @return 若没有 {@code LDJ_table}，或没有 1 个可读取的表则返回 null
 	 */
 	public static LDJTableFolderBar createIfAvailable(MusicSelector selector, LDJTableProvider provider) {
 		if (selector == null || provider == null || !provider.isAvailable()) {

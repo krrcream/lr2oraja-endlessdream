@@ -9,13 +9,13 @@ import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.FolderData;
 
 /**
- * LDJ難易度表json1ファイル分の仮想フォルダ。子はグループの欄。
+ * 对应 LDJ 难度表 json1 个文件的虚拟文件夹.子项是分组的栏.
  *
- * タイトルは json の title。無ければファイル名(拡張子なし)で代用する。
- * 表を開くとグループ名が並び、グループを開くと譜面が並ぶ。
+ * 标题取 json 的 title.若没有，则用文件名(不含扩展名)代替.
+ * 打开表后会列出分组名，打开分组后会列出谱面.
  *
- * どのグループにも譜面が1つも残らない表は {@link #createIfAvailable} が null を返し、
- * デッドバーにならないようにしている。この欄もソートを無効化する。
+ * 任何分组都没有剩下 1 首谱面的表，{@link #createIfAvailable} 会返回 null，
+ * 以避免变成死栏.该栏也禁用排序.
  *
  * @author endlessdream
  */
@@ -30,7 +30,7 @@ public class LDJTableFileBar extends FolderBar {
 	}
 
 	/**
-	 * @return 使えるグループが1つも無かった場合はnull
+	 * @return 若 1 个可用分组都没有则返回 null
 	 */
 	public static LDJTableFileBar createIfAvailable(MusicSelector selector, LDJTableProvider provider,
 			LDJTableData data) {
