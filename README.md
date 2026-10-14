@@ -39,7 +39,7 @@ This feature uses the standalone tool [iidx2bms (personal fork)](https://github.
 
 The following training features were added to the built-in Mod menu (shortcut `F5` / `Insert`):
 
-- Quick presets for Gauge and Judge
+- Emulates IIDX-style groove gauge and judgement
 - Enhanced frequency (rate) training: 0.1% fine adjustment, 0.5% steps in practice mode, simulation of the original judgement logic, and simulation of the original gauge behavior
 
 ### backbeat Integration
