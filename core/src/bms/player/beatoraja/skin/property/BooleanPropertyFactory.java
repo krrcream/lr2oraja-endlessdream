@@ -328,8 +328,8 @@ public class BooleanPropertyFactory {
 	}
 	
 	/**
-	 * 结算页でLDJ由来の譜面を「IR未ログイン」として扱うか。
-	 * IR送信が抑制される条件(BMSPlayer参照)のうちLDJ由来の部分と一致させる。
+	 * 结算页是否将LDJ来源的谱面视为“IR未登录”
+	 * 与IR发送被抑制的条件(见 BMSPlayer)中的LDJ来源部分保持一致
 	 */
 	private static boolean isLDJResult(MainState state) {
 		return state instanceof AbstractResult

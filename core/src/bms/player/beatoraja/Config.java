@@ -216,35 +216,35 @@ public class Config implements Validatable {
 	private HashMap<String, String> obsActions = new HashMap<>();
 
 	/**
-	 * LDJ音声データのルートディレクトリ。空の場合はLDJ連携が無効
+	 * LDJ音频数据的根目录，为空时LDJ联动无效
 	 */
 	private String LDJ_SoundPath = "";
 	/**
-	 * LDJムービー(BGA)データのルートディレクトリ
+	 * LDJ视频(BGA)数据的根目录
 	 */
 	private String LDJ_MoviePath = "";
 	/**
-	 * LDJ変換ツール (iidx2bms) のチェックアウトディレクトリ
+	 * LDJ转换工具 (iidx2bms) 的检出目录
 	 */
 	private String LDJ_ToolPath = "";
 	/**
-	 * 変換結果をキャッシュするかどうか
+	 * 是否缓存转换结果
 	 */
 	private boolean LDJ_CacheEnabled = true;
 	/**
-	 * 変換キャッシュの上限サイズ(MB)
+	 * 转换缓存的上限大小(MB)
 	 */
 	private int LDJ_CacheMaxSizeMB = 2048;
 	/**
-	 * 変換時にBGAを含めるかどうか
+	 * 转换时是否包含BGA
 	 */
 	private boolean LDJ_IncludeBGA = true;
 	/**
-	 * 変換時にプレビュー音声を含めるかどうか
+	 * 转换时是否包含预览音频
 	 */
 	private boolean LDJ_IncludePreview = true;
 	/**
-	 * LDJ関連ファイル(cli/cache/session)の保存先ルート。空の場合はOS一時ディレクトリ
+	 * LDJ相关文件(cli/cache/session)的保存根目录，为空时使用OS临时目录
 	 */
 	private String LDJ_Sources = "";
 
@@ -975,8 +975,8 @@ public class Config implements Validatable {
 		LDJ_Sources = LDJ_Sources != null ? LDJ_Sources.trim() : "";
 		LDJ_CacheMaxSizeMB = MathUtils.clamp(LDJ_CacheMaxSizeMB, 0, 1024 * 1024);
 		if (!LDJ_SoundPath.isEmpty()) {
-			// 連携が有効な設定に限りパスの妥当性を検査する。ここで落とさず警告に留めるのは、
-			// 外付けドライブが未接続のまま起動した場合でも設定画面から修正できるようにするため。
+			// 仅在联动有效的配置下校验路径的有效性，此处不直接失败而只作警告，是因为
+			// 即使外置驱动器未连接就启动，也能从设置界面加以修正
 			if (!validateDirectory(LDJ_SoundPath)) {
 				logger.warn("LDJ sound path is not a directory: {}", LDJ_SoundPath);
 			}

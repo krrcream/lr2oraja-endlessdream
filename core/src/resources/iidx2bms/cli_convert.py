@@ -216,8 +216,8 @@ def main(argv: list[str]) -> int:
                 "genre": str(result.genre),
                 "game_version": int(result.game_version),
             },
-            # 変換条件。Java側はキャッシュ再利用の可否をこの値で判定するため、
-            # 条件を変えた再変換では必ず更新される必要がある。
+            # 转换条件，Java侧依据该值判定能否复用缓存，
+            # 因此改变条件重新转换时必须更新该值
             "options": {
                 "include_stagefile": bool(include_stagefile),
                 "include_bga": bool(not args.no_bga),
@@ -225,8 +225,8 @@ def main(argv: list[str]) -> int:
             },
         }
 
-        # キャッシュディレクトリへ移動された後でもJava側が譜面を特定できるよう、
-        # マニフェストを出力ディレクトリ内にも残す。
+        # 为了在移动到缓存目录后Java侧仍能定位谱面，
+        # 同时在输出目录内保留清单文件
         try:
             (result_dir / MANIFEST_FILE).write_text(
                 json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8"

@@ -22,14 +22,14 @@ import bms.player.beatoraja.select.bar.SongBar;
 import bms.player.beatoraja.song.SongData;
 
 /**
- * カレントディレクトリの {@code LDJ_table} 配下にある難易度表jsonを読み込む。
+ * 读取当前目录下 {@code LDJ_table} 中的难度表 json.
  *
- * <p>読むのは iidx-pro-difficulty-table 形式で、beatoraja ネイティブの難易度表とは別物。
- * ハッシュ照合は行わず、musicId と chartType の組を {@link LDJSongProvider} が持つ
- * music_data.json の曲メタデータに突き合わせて {@link SongBar} を作る。</p>
+ * <p>读取的是 iidx-pro-difficulty-table 格式，与 beatoraja 原生的难度表不是一回事.
+ * 不做哈希比对，而是把 musicId 与 chartType 的组合，与 {@link LDJSongProvider} 持有的
+ * music_data.json 中的曲目元数据对照，生成 {@link SongBar}.</p>
  *
- * <p>ディレクトリが無い、ファイルが壊れている、曲が見つからない、といった場合は
- * 例外を投げずにその表・その譜面だけを落とす。LDJ 以外の挙動に影響を与えないため。</p>
+ * <p>在目录不存在，文件损坏，曲目找不到等情况下，
+ * 都不抛出异常，只丢弃该表和该谱面.因为不能影响 LDJ 以外的行为.</p>
  *
  * @author endlessdream
  */
@@ -37,10 +37,10 @@ public final class LDJTableProvider {
 
 	private static final Logger logger = LoggerFactory.getLogger(LDJTableProvider.class);
 
-	/** 難易度表jsonを置くディレクトリ名。プロセスのカレントディレクトリからの相対パス */
+	/** 放置难度表 json 的目录名.相对于进程当前目录的路径 */
 	public static final String TABLE_DIRECTORY = "LDJ_table";
 
-	/** jsonの拡張子 */
+	/** json 的扩展名 */
 	private static final String JSON_SUFFIX = ".json";
 
 	private final LDJSongProvider songs;
@@ -51,7 +51,7 @@ public final class LDJTableProvider {
 
 	private boolean available;
 
-	/** 列挙したjsonファイル。ファイル名の昇順 */
+	/** 枚举出的 json 文件.按文件名升序 */
 	private List<Path> files = Collections.emptyList();
 
 	private boolean loadAttempted;
@@ -63,13 +63,13 @@ public final class LDJTableProvider {
 		this.tableDirectory = Paths.get(TABLE_DIRECTORY);
 	}
 
-	/** 参照しているディレクトリ。ログ用 */
+	/** 当前引用的目录.用于日志 */
 	public Path getTableDirectory() {
 		return tableDirectory;
 	}
 
 	/**
-	 * 難易度表を1つ以上置ける状態か。ディレクトリの列挙だけを行い、中身は解析しない
+	 * 是否处于可放置 1 个以上难度表的状态.只枚举目录，不解析内容
 	 */
 	public boolean isAvailable() {
 		scan();
@@ -77,7 +77,7 @@ public final class LDJTableProvider {
 	}
 
 	/**
-	 * 読み込んだ難易度表(読み取り専用)。解析できないファイルは含まれない
+	 * 已读取的难度表(只读).不包含无法解析的文件
 	 */
 	public List<LDJTableData> getTables() {
 		load();
@@ -85,9 +85,9 @@ public final class LDJTableProvider {
 	}
 
 	/**
-	 * chartType を難易度に対応付ける。
+	 * 将 chartType 与难度对应起来.
 	 *
-	 * <p>0〜4がSPのB/N/H/A/L、5〜9がDPのB/N/H/A/L。範囲外はnull</p>
+	 * <p>0~4 为 SP 的 B/N/H/A/L，5~9 为 DP 的 B/N/H/A/L.超出范围则为 null</p>
 	 */
 	public static Difficulty resolveDifficulty(int chartType) {
 		switch (chartType) {
@@ -117,13 +117,13 @@ public final class LDJTableProvider {
 	}
 
 	/**
-	 * 表の譜面1つを {@link SongBar} にする。
+	 * 把表中的 1 个谱面转成 {@link SongBar}.
 	 *
-	 * <p>曲メタデータが見つからない場合と、その難易度の譜面が存在しない場合はnullを返す。
-	 * 呼び出し側はnullを落として、1曲も残らないグループを作らないこと。</p>
+	 * <p>找不到曲目元数据时，以及该难度的谱面不存在时，返回 null.
+	 * 调用方应丢弃 null，不要生成一个曲目都不剩的分组.</p>
 	 *
-	 * @param chart 表が指す譜面
-	 * @return 対応する仮想パスのSongBar。作れない場合はnull
+	 * @param chart 表所指向的谱面
+	 * @return 对应虚拟路径的 SongBar.无法生成时为 null
 	 */
 	public SongBar createSongBar(LDJTableData.Chart chart) {
 		if (chart == null || !chart.isValid()) {
@@ -143,7 +143,7 @@ public final class LDJTableProvider {
 		}
 
 		final SongData song = LDJSongProvider.createSongData(meta, difficulty);
-		// 難易度値から派生したサブタグを、曲名の後ろにそのまま出す
+		// 把由难度值派生的子标签直接显示在曲名之后
 		if (!chart.getLabel().isEmpty()) {
 			song.setSubtitle(chart.getLabel());
 		}
@@ -209,7 +209,7 @@ public final class LDJTableProvider {
 	}
 
 	/**
-	 * jsonファイル1つを読む。読めない場合と、使えるグループが1つも無い場合はnull
+	 * 读取 1 个 json 文件.读不了时，以及没有任何可用分组时返回 null
 	 */
 	private static LDJTableData parse(Path file) {
 		try {
@@ -243,7 +243,7 @@ public final class LDJTableProvider {
 	}
 
 	/**
-	 * グループ1つを読む。名前が無いものと、譜面が1つも無いものは使わない
+	 * 读取 1 个分组.没有名称的，以及 1 个谱面都没有的，都不使用
 	 */
 	private static LDJTableData.Group parseGroup(JsonValue group) {
 		final String name = stringValue(group, "name").trim();
@@ -270,7 +270,7 @@ public final class LDJTableProvider {
 	}
 
 	/**
-	 * 譜面1つを読む。musicId と chartType の両方が読めないものは使わない
+	 * 读取 1 个谱面.musicId 与 chartType 两者都读不出来的，不使用
 	 */
 	private static LDJTableData.Chart parseChart(JsonValue chart) {
 		final int musicId = intValue(chart, "musicId");

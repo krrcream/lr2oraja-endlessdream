@@ -9,21 +9,21 @@ import imgui.flag.ImGuiCond;
 import imgui.flag.ImGuiWindowFlags;
 
 /**
- * LDJ譜面の変換進捗を画面中央に表示するオーバーレイ。
+ * 在画面中央显示 LDJ 谱面转换进度的覆盖层
  *
  * <p>
- * ImGuiのフレームは{@code MainController.render()}が{@code ImGuiRenderer}経由で
- * 管理しており、選曲状態({@code MusicSelector.render()})からは描画できない。
- * そのため進捗はこのクラスの静的フィールドに保持し、実際の描画は
- * {@code ImGuiRenderer.render()}から呼び出してもらう。
- * 変換スレッドから更新されるため、フィールドはvolatileとする。
+ * ImGui 的帧由{@code MainController.render()}经{@code ImGuiRenderer}
+ * 管理，因此无法从选曲状态({@code MusicSelector.render()})中进行绘制
+ * 因此进度保存在本类的静态字段中，实际的绘制则
+ * 交由{@code ImGuiRenderer.render()}调用
+ * 由于会从转换线程更新，字段声明为 volatile
  *
  * @author endlessdream
  */
 public class LDJConversionOverlay {
 
 	/**
-	 * オーバーレイの幅(px)
+	 * 覆盖层的宽度(px)
 	 */
 	private static final float WIDTH = 480.0f;
 
@@ -32,7 +32,7 @@ public class LDJConversionOverlay {
 	private static volatile String title = "";
 
 	/**
-	 * 進捗(0-100)。-1は非表示を表す
+	 * 进度(0-100)，-1 表示不显示
 	 */
 	private static volatile int progress = -1;
 
@@ -42,7 +42,7 @@ public class LDJConversionOverlay {
 	}
 
 	/**
-	 * 変換の開始時に進捗表示を出す(UIスレッド)
+	 * 转换开始时显示进度(UI 线程)
 	 */
 	public static void show(String songTitle) {
 		title = songTitle != null ? songTitle : "";
@@ -52,7 +52,7 @@ public class LDJConversionOverlay {
 	}
 
 	/**
-	 * 進捗を更新する(変換スレッドから呼ばれる)
+	 * 更新进度(由转换线程调用)
 	 */
 	public static void update(int percent, String message) {
 		progress = percent;
@@ -60,7 +60,7 @@ public class LDJConversionOverlay {
 	}
 
 	/**
-	 * 進捗表示を消す(UIスレッド)
+	 * 隐藏进度显示(UI 线程)
 	 */
 	public static void hide() {
 		visible = false;
@@ -69,7 +69,7 @@ public class LDJConversionOverlay {
 	}
 
 	/**
-	 * オーバーレイを描画する。ImGuiのフレーム内(ImGuiRenderer.render)からのみ呼ぶこと
+	 * 绘制覆盖层，只能在 ImGui 的帧内(ImGuiRenderer.render)调用
 	 */
 	public static void render() {
 		if (!visible) {

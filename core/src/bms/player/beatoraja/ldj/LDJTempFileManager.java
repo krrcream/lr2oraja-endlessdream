@@ -15,13 +15,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * LDJ譜面の一時変換で使用するファイル配置を管理する。
+ * 管理LDJ谱面临时转换所使用的文件布局
  *
  * <pre>
  * %TEMP%/lr2oraja_iidx/
- *   cli/cli_convert.py   - jarから展開した変換ブリッジスクリプト
- *   cache/&lt;song_id&gt;/      - 変換済みの譜面(永続、サイズ上限あり)
- *   session/&lt;request&gt;/    - 変換中の作業ディレクトリ(起動時に全削除)
+ *   cli/cli_convert.py   - 从 jar 中解压出的转换桥接脚本
+ *   cache/&lt;song_id&gt;/      - 已转换的谱面(持久保存，有大小上限)
+ *   session/&lt;request&gt;/    - 转换中的工作目录(启动时全部删除)
  * </pre>
  *
  * @author endlessdream
@@ -69,15 +69,15 @@ public class LDJTempFileManager {
 	}
 
 	/**
-	 * ブリッジスクリプトのパス。{@link #prepare()} 呼び出し後に有効になる
+	 * 桥接脚本的路径，在调用 {@link #prepare()} 后生效
 	 */
 	public Path getBridgeScript() {
 		return bridgeScript;
 	}
 
 	/**
-	 * ディレクトリを用意し、jarからブリッジスクリプトを展開して前回の作業ディレクトリを破棄する。
-	 * 一時ディレクトリが使えない環境ではfalseを返し、呼び出し側で機能を無効化する。
+	 * 准备目录，从 jar 中解压桥接脚本，并丢弃上次的工作目录
+	 * 在无法使用临时目录的环境中返回 false，由调用方禁用该功能
 	 */
 	public boolean prepare() {
 		if (prepared) {
@@ -107,7 +107,7 @@ public class LDJTempFileManager {
 	}
 
 	/**
-	 * 指定した楽曲のキャッシュディレクトリを返す(存在しない場合はnull)
+	 * 返回指定乐曲的缓存目录(不存在时返回 null)
 	 */
 	public Path getCachedSongDir(String songIdDisplay) {
 		Path dir = cacheDir.resolve(songIdDisplay);
@@ -115,7 +115,7 @@ public class LDJTempFileManager {
 	}
 
 	/**
-	 * 変換用の作業ディレクトリを新規作成して返す。同じ楽曲を連続して変換しても衝突しない
+	 * 新建并返回用于转换的工作目录，连续转换同一乐曲也不会冲突
 	 */
 	public Path createSessionDir(String songIdDisplay) throws IOException {
 		Files.createDirectories(sessionDir);
@@ -125,7 +125,7 @@ public class LDJTempFileManager {
 	}
 
 	/**
-	 * 変換結果を作業ディレクトリからキャッシュへ移動する。移動に失敗した場合は元の位置を返す
+	 * 把转换结果从工作目录移动到缓存，移动失败时返回原位置
 	 */
 	public Path promoteToCache(Path convertedDir, String songIdDisplay) {
 		if (convertedDir == null || !Files.isDirectory(convertedDir)) {
@@ -140,7 +140,7 @@ public class LDJTempFileManager {
 			try {
 				Files.move(convertedDir, target, StandardCopyOption.ATOMIC_MOVE);
 			} catch (IOException atomicFailure) {
-				// ATOMIC_MOVEは同一ボリュームでしか成立しないため、通常移動へ退避する
+				// ATOMIC_MOVE 只在同一个卷内成立，因此退回到普通移动
 				copyRecursively(convertedDir, target);
 				deleteRecursively(convertedDir);
 			}
@@ -152,7 +152,7 @@ public class LDJTempFileManager {
 	}
 
 	/**
-	 * 作業ディレクトリを破棄する。変換に失敗した場合の後始末に使う
+	 * 丢弃工作目录，用于转换失败时的清理
 	 */
 	public void discardSessionDir(Path dir) {
 		if (dir == null) {
@@ -164,16 +164,16 @@ public class LDJTempFileManager {
 	}
 
 	/**
-	 * 作業ディレクトリをすべて削除する
+	 * 删除所有工作目录
 	 */
 	public void clearSession() {
 		deleteRecursively(sessionDir);
 	}
 
 	/**
-	 * キャッシュ合計サイズが上限を超えている場合、古いものから削除する
+	 * 当缓存总大小超过上限时，从最旧的开始删除
 	 *
-	 * @param maxSizeMB 上限(MB)。0以下なら何もしない
+	 * @param maxSizeMB 上限(MB)，0 以下时不做任何处理
 	 */
 	public void enforceCacheLimit(long maxSizeMB) {
 		if (maxSizeMB <= 0 || !Files.isDirectory(cacheDir)) {
@@ -229,7 +229,7 @@ public class LDJTempFileManager {
 				try {
 					size[0] += Files.size(p);
 				} catch (IOException e) {
-					// 計測できないファイルは0として扱う
+					// 无法计量的文件按 0 处理
 				}
 			});
 		} catch (IOException e) {
@@ -249,7 +249,7 @@ public class LDJTempFileManager {
 			logger.error("Failed to walk {}: {}", dir, e.getMessage());
 			return false;
 		}
-		// 深い方から消さないとディレクトリを削除できない
+		// 若不从最深的一层开始删除，就无法删除目录
 		paths.sort(Comparator.reverseOrder());
 		boolean success = true;
 		for (Path path : paths) {

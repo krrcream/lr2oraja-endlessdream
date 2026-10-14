@@ -7,12 +7,12 @@ import java.util.List;
 import bms.player.beatoraja.ldj.LDJChartRef.Difficulty;
 
 /**
- * iidx-pro-difficulty-table 形式(json)の難易度表1ファイル分の内容。
+ * iidx-pro-difficulty-table 格式(json)的难度表单个文件的内容.
  *
- * <p>beatoraja ネイティブの難易度表({@code TableData})とは別形式・別実装。ハッシュによる
- * 譜面の同一性判定は行わず、musicId と chartType の組だけで譜面を指す。</p>
+ * <p>与 beatoraja 原生难度表({@code TableData})格式不同，实现也不同，不通过哈希
+ * 判定谱面同一性，仅用 musicId 与 chartType 的组合来指向谱面.</p>
  *
- * <p>値はすべて読み込み時に確定する不変オブジェクト。json の並び順をそのまま保持する。</p>
+ * <p>所有值都是读取时即确定的不可变对象，原样保持 json 的排列顺序.</p>
  *
  * @author endlessdream
  */
@@ -36,7 +36,7 @@ public final class LDJTableData {
 		this.groups = groups == null ? Collections.<Group>emptyList() : Collections.unmodifiableList(groups);
 	}
 
-	/** 読み込み元のjsonファイル。ログと表示用 */
+	/** 读取来源的 json 文件，用于日志与显示 */
 	public Path getSource() {
 		return source;
 	}
@@ -45,12 +45,12 @@ public final class LDJTableData {
 		return title;
 	}
 
-	/** 表の説明。未設定ならnull */
+	/** 表的说明，未设置时为 null */
 	public String getDescription() {
 		return description;
 	}
 
-	/** "SP" か "DP"。絞り込みには使わず、記録用 */
+	/** "SP" 或 "DP"，不用于筛选，仅作记录 */
 	public String getPlayStyle() {
 		return playStyle;
 	}
@@ -60,7 +60,7 @@ public final class LDJTableData {
 	}
 
 	/**
-	 * 一覧に出す名前。json の title が無い場合はファイル名(拡張子なし)で代用する
+	 * 列表中显示的名称，json 中没有 title 时用文件名(不含扩展名)代替
 	 */
 	public String getDisplayTitle() {
 		if (!title.isEmpty()) {
@@ -75,7 +75,7 @@ public final class LDJTableData {
 	}
 
 	/**
-	 * 表の中のグループ1つ。グループ名がそのまま選曲画面のフォルダ名になる
+	 * 表中的一个分组，分组名直接成为选曲画面中的文件夹名
 	 */
 	public static final class Group {
 
@@ -95,7 +95,7 @@ public final class LDJTableData {
 			return name;
 		}
 
-		/** 元ゲーム名(例 "ereter")。表示には使わない */
+		/** 原始游戏名(例 "ereter")，不用于显示 */
 		public String getGameName() {
 			return gameName;
 		}
@@ -106,7 +106,7 @@ public final class LDJTableData {
 	}
 
 	/**
-	 * 表が指す譜面1つ。musicId と chartType が譜面の同一性を決める
+	 * 表所指向的单个谱面，musicId 与 chartType 决定谱面的同一性
 	 */
 	public static final class Chart {
 
@@ -128,32 +128,32 @@ public final class LDJTableData {
 			this.title = title == null ? "" : title;
 		}
 
-		/** musicId を文字列にしたもの。music_data.json 側の song_id と同じ表記 */
+		/** musicId 的字符串形式，与 music_data.json 侧的 song_id 表记相同 */
 		public String getSongId() {
 			return songId;
 		}
 
-		/** chartType を対応付けた難易度。対応が取れない場合はnull */
+		/** 与 chartType 建立对应关系的难度，无法对应时为 null */
 		public Difficulty getDifficulty() {
 			return difficulty;
 		}
 
-		/** 表の中での並び順を決める値。負の値もありうる */
+		/** 决定表内排列顺序的值，也可能为负值 */
 		public float getDifficultyValue() {
 			return difficultyValue;
 		}
 
-		/** 難易度値から派生したサブタグ。無指定なら空文字 */
+		/** 由难度值派生的子标签，未指定时为空字符串 */
 		public String getLabel() {
 			return label;
 		}
 
-		/** 元の曲名。曲が見つからなかったときのログ用 */
+		/** 原始曲名，用于找不到曲目时的日志 */
 		public String getTitle() {
 			return title;
 		}
 
-		/** songId と chartType から譜面を特定できるか */
+		/** 能否根据 songId 与 chartType 确定谱面 */
 		public boolean isValid() {
 			return songId != null && !songId.isEmpty() && difficulty != null;
 		}

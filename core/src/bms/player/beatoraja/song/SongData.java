@@ -73,7 +73,7 @@ public class SongData implements Validatable, IpfsInformation {
 	private String md5 = "";
 	private String sha256 = "";
 	/**
-	 * LDJ譜面の仮想スコアキー。iidx:// から作った仮ハッシュ。null なら通常譜面
+	 * LDJ谱面的虚拟分数键，即由 iidx:// 生成的临时哈希，为 null 则是普通谱面
 	 */
 	private String ldjSha256;
 	private String url;
@@ -154,8 +154,8 @@ public class SongData implements Validatable, IpfsInformation {
 		setSubartist(model.getSubArtist());
 		path.add(model.getPath());
 		if (isLDJChart()) {
-			// LDJ譜面のスコアは iidx:// 由来の仮想ハッシュで引くため、
-			// 変換後ファイルの内容ハッシュで上書きすると二度と読めなくなる
+			// LDJ谱面的分数通过 iidx:// 来源的虚拟哈希检索，
+			// 若用转换后文件的内容哈希覆盖，就再也无法读取
 			sha256 = ldjSha256;
 		} else {
 			md5 = model.getMD5();
@@ -546,14 +546,14 @@ public class SongData implements Validatable, IpfsInformation {
 		this.sha256 = sha256;
 	}
 	/**
-	 * LDJ譜面のスコアキーを仮想ハッシュへ固定する。
-	 * iidx:// のパスが実ファイルへ書き換わる前に呼ぶこと。
+	 * 将LDJ谱面的分数键固定为虚拟哈希
+	 * 必须在 iidx:// 的路径被改写为实际文件之前调用
 	 */
 	public void setLDJScoreKey(String sha256) {
 		this.ldjSha256 = sha256;
 	}
 	/**
-	 * この譜面が LDJ由来か。真なら sha256 は実ファイルの内容ハッシュではなく仮想ハッシュ。
+	 * 该谱面是否来自 LDJ，为真时 sha256 不是实际文件的内容哈希，而是虚拟哈希
 	 */
 	public boolean isLDJChart() {
 		return ldjSha256 != null && !ldjSha256.isEmpty();

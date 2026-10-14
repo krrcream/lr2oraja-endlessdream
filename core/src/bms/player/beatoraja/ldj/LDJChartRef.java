@@ -3,8 +3,8 @@ package bms.player.beatoraja.ldj;
 import bms.model.Mode;
 
 /**
- * 仮想LDJフォルダが扱う1譜面の参照。実ファイルは存在せず、
- * {@code iidx://<songId>/<difficulty>} 形式のパスで識別する。
+ * 虚拟LDJ文件夹所处理的单个谱面引用，不存在实体文件，
+ * 通过 {@code iidx://<songId>/<difficulty>} 形式的路径进行识别.
  *
  * @author endlessdream
  */
@@ -13,7 +13,7 @@ public class LDJChartRef {
 	public static final String SCHEME = "iidx://";
 
 	/**
-	 * LDJの難易度。トークンはcli_convert.pyが返すマニフェストと共通
+	 * LDJ 的难度，token 与 cli_convert.py 返回的清单共通
 	 */
 	public enum Difficulty {
 		SPB("spb", 1, false),
@@ -42,7 +42,7 @@ public class LDJChartRef {
 		}
 
 		/**
-		 * BMSの#DIFFICULTY値(1=BEGINNER ... 5=LEGGENDARIA)
+		 * BMS 的 #DIFFICULTY 值(1=BEGINNER ... 5=LEGGENDARIA)
 		 */
 		public int getBmsDifficulty() {
 			return bmsDifficulty;
@@ -83,7 +83,7 @@ public class LDJChartRef {
 	}
 
 	/**
-	 * 4桁ゼロ埋めした表示用ID(5桁以上はそのまま)
+	 * 4 位补零后的显示用 ID(5 位以上保持原样)
 	 */
 	public String getSongIdDisplay() {
 		return songIdDisplay;
@@ -94,7 +94,7 @@ public class LDJChartRef {
 	}
 
 	/**
-	 * 仮想譜面のパス表現
+	 * 虚拟谱面的路径表示
 	 */
 	public String getPath() {
 		return SCHEME + songId + "/" + difficulty.getToken();
@@ -106,14 +106,14 @@ public class LDJChartRef {
 	}
 
 	/**
-	 * 仮想パスかどうかを判定する
+	 * 判断是否为虚拟路径
 	 */
 	public static boolean isLDJPath(String path) {
 		return path != null && path.startsWith(SCHEME);
 	}
 
 	/**
-	 * 仮想パスを解析する。形式が不正な場合はnull
+	 * 解析虚拟路径，格式非法时返回 null
 	 */
 	public static LDJChartRef parse(String path) {
 		if (!isLDJPath(path)) {
@@ -133,12 +133,12 @@ public class LDJChartRef {
 	}
 
 	/**
-	 * 表示用IDへの変換。
+	 * 转换为显示用 ID.
 	 *
-	 * iidx2bms の search_engine._display_song_id と同じ規則に揃えてある
-	 * (4桁のIDは先頭に'0'を足して5桁にする、それ以外はそのまま)。
-	 * 変換側はこの表示IDから素材ファイル名を組み立てるため、規則がずれると
-	 * "Chart source files not found" になる。
+	 * 与 iidx2bms 的 search_engine._display_song_id 采用相同规则
+	 * (4 位的 ID 在开头补 '0' 变为 5 位，其余保持原样).
+	 * 转换侧会根据该显示 ID 拼装素材文件名，因此规则一旦出现偏差，
+	 * 就会变成 "Chart source files not found".
 	 */
 	public static String toDisplayId(String songId) {
 		if (songId == null) {

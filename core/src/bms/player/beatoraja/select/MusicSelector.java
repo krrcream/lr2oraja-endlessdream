@@ -115,17 +115,17 @@ public final class MusicSelector extends MainState {
 
 	private PixmapResourcePool stagefiles;
 
-	// LDJ連携(iidx2bms)。config で有効かつ変換環境が使える場合のみ非null
+	// LDJ 联动(iidx2bms)，仅在 config 中启用且转换环境可用时才非 null
 	private LDJSongProvider ldjProvider;
 	private LDJTempFileManager ldjTempFiles;
 	private LDJConversionService ldjConverter;
 	private Bar ldjBar;
-	// 変換スレッド関連。完了検出は render() での isAlive() ポーリング
+	// 转换线程相关，完成检测通过 render() 中的 isAlive() 轮询
 	private Thread ldjThread;
 	private SongData ldjSong;
 	private Bar ldjBarAtStart;
 	private BMSPlayerMode ldjMode;
-	// isAlive()による完了検出はhappens-beforeを保証しないため、ワーカーが書くフィールドはvolatileにする
+	// isAlive() 进行的完成检测不保证 happens-before，因此 worker 写入的字段设为 volatile
 	private volatile LDJConversionService.Result ldjResult;
 	private volatile String ldjError;
 	private boolean ldjProceedRead = false;
@@ -224,15 +224,15 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
-	 * LDJ連携の設定はプレイヤー個別設定(PlayerConfig)ではなく全体設定(Config)側にある
+	 * LDJ 联动的设置不在玩家个别设置(PlayerConfig)中，而在整体设置(Config)一侧
 	 */
 	private Config ldjConfig() {
 		return main.getPlayerResource().getConfig();
 	}
 
 	/**
-	 * LDJ連携(iidx2bms)を初期化する。設定が空、または変換環境が使えない場合は
-	 * 何もしない(選曲画面にLDJフォルダを作らない)
+	 * 初始化 LDJ 联动(iidx2bms)，设置为空或转换环境不可用时
+	 * 不做任何处理(不在选曲画面创建 LDJ 文件夹)
 	 */
 	private void setupLDJFolder() {
 		final String projectRoot = ldjConfig().getLDJ_ToolPath();
@@ -244,7 +244,7 @@ public final class MusicSelector extends MainState {
 			logger.warn("iidx2bms: 変換環境を利用できないためLDJ連携を無効にします: {}", projectRoot);
 			return;
 		}
-		// LDJ_Sources未設定時は従来どおりOS一時ディレクトリにフォールバックする
+		// 未设置 LDJ_Sources 时，按以往方式回退到 OS 临时目录
 		final String sourcesRoot = ldjConfig().getLDJ_Sources();
 		final LDJTempFileManager tempFiles = (sourcesRoot == null || sourcesRoot.isEmpty())
 				? new LDJTempFileManager()
@@ -261,7 +261,7 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
-	 * 変換要求を組み立てる。outRootにnullを渡すと変換はできないが、キャッシュ判定には使える
+	 * 组装转换请求，向 outRoot 传入 null 时无法转换，但可用于缓存判定
 	 */
 	private LDJConversionService.Request newLDJRequest(LDJChartRef ref, Path outRoot) {
 		final Config ldj = ldjConfig();
@@ -274,9 +274,9 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
-	 * 変換結果から要求された難易度の譜面を探し、songのパスを実BMSファイルへ書き換える
+	 * 从转换结果中查找所需难度的谱面，把 song 的路径改写为实际 BMS 文件
 	 *
-	 * @return 該当する譜面が見つかった場合のみtrue
+	 * @return 仅当找到对应谱面时为 true
 	 */
 	private boolean applyLDJResult(SongData song, LDJChartRef ref, LDJConversionService.Result result) {
 		if (song == null || ref == null || result == null) {
@@ -285,7 +285,7 @@ public final class MusicSelector extends MainState {
 		final String token = ref.getDifficulty().getToken();
 		for (LDJConversionService.Chart chart : result.charts) {
 			if (token.equalsIgnoreCase(chart.getDifficulty())) {
-				// キャッシュへ移動するとmanifestの絶対パスは無効になるため、必ずresolve()で解決する
+				// 移动到缓存后 manifest 的绝对路径会失效，因此必须用 resolve() 解析
 				song.setPath(chart.resolve(result.directory).toString());
 				return true;
 			}
@@ -295,17 +295,17 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
-	 * LDJ譜面の変換を開始する。
+	 * 开始 LDJ 谱面的转换
 	 *
-	 * @return キャッシュヒットして譜面を読み込める状態になった場合はtrue。変換を開始した、
-	 *         あるいは開始できなかった場合はfalse(呼び出し元は処理を打ち切る)
+	 * @return 缓存命中且已处于可读取谱面状态时为 true，转换已开始，
+	 *         或者未能开始时为 false(调用方中断处理)
 	 */
 	private boolean startLDJConversion(SongData song, Bar current) {
 		if (ldjConverter == null || ldjProvider == null || ldjTempFiles == null) {
 			return false;
 		}
 		if (ldjThread != null && ldjThread.isAlive()) {
-			// 変換は同時に1件のみ。進行中の変換は中断しない(cancel()は呼ばない)
+			// 转换同时只允许 1 件，不中断进行中的转换(不调用 cancel())
 			ImGuiNotify.info("LDJ譜面を変換中です。完了までお待ちください");
 			return false;
 		}
@@ -319,7 +319,7 @@ public final class MusicSelector extends MainState {
 		try {
 			final LDJConversionService.Result cached = ldjConverter.readCachedResult(newLDJRequest(ref, null));
 			if (applyLDJResult(song, ref, cached)) {
-				// キャッシュヒット。songのパスは実BMSへ書き換え済みなので通常の読み込みフローへ進む
+				// 缓存命中，song 的路径已改写为实际 BMS，因此进入通常的读取流程
 				return true;
 			}
 		} catch (LDJConversionService.ConversionException e) {
@@ -342,7 +342,7 @@ public final class MusicSelector extends MainState {
 		ldjStage = "変換を開始しています";
 		LDJConversionOverlay.show(ref.getSongIdDisplay());
 		ImGuiNotify.info("LDJ譜面を変換しています...");
-		// 変換スレッドから全体設定を読まないよう、UIスレッド側で値を確定させて渡す
+		// 为避免转换线程读取整体设置，在 UI 线程侧先确定取值再传入
 		final int cacheMaxSizeMB = ldjConfig().getLDJ_CacheMaxSizeMB();
 		final Thread thread = new Thread(
 				() -> runLDJConversion(newLDJRequest(ref, sessionDir), ref, sessionDir, cacheMaxSizeMB),
@@ -354,7 +354,7 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
-	 * 変換スレッドの本体。UIスレッドからは触らず、結果はフィールド経由で受け渡す
+	 * 转换线程的主体，不从 UI 线程触碰，结果通过字段传递
 	 */
 	private void runLDJConversion(LDJConversionService.Request request, LDJChartRef ref, Path sessionDir,
 			int cacheMaxSizeMB) {
@@ -373,7 +373,7 @@ public final class MusicSelector extends MainState {
 							logger.warn("iidx2bms: {}", message);
 						}
 					});
-			// キャッシュへ移動する。移動に失敗しても同じディレクトリが返るため、そのまま使用する
+			// 移动到缓存，即使移动失败也会返回同一目录，因此直接使用
 			final Path promoted = ldjTempFiles.promoteToCache(result.directory, ref.getSongIdDisplay());
 			ldjTempFiles.enforceCacheLimit(cacheMaxSizeMB);
 			ldjResult = new LDJConversionService.Result(promoted, result.charts, result.title, result.artist,
@@ -392,7 +392,7 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
-	 * 変換スレッドの完了をrender()から受け取り、成功していれば譜面の読み込みを再開する(UIスレッド)
+	 * 从 render() 接收转换线程的完成通知，若成功则重新开始读取谱面(UI 线程)
 	 */
 	private void onLDJConversionFinished() {
 		if (!ldjProceedRead) {
@@ -416,9 +416,9 @@ public final class MusicSelector extends MainState {
 
 		final LDJChartRef ref = song != null ? LDJChartRef.parse(song.getPath()) : null;
 		if (applyLDJResult(song, ref, result)) {
-			// 通常の読み込みフロー(resource.setBMSFile → DECIDE遷移)を迂回せず、同じ経路を通す。
-			// 直後のrender()のplay消費ブロックに二重に拾われないよう、読み込み後はplayを戻す
-			// パスはapplyLDJResultで実BMSへ書き換え済みのため、LDJ由来であることを明示して渡す
+			// 不绕过通常的读取流程(resource.setBMSFile → DECIDE 迁移)，而是走同一条路径
+			// 为避免被紧随其后的 render() 的 play 消费块重复取走，读取后把 play 恢复
+			// 路径已由 applyLDJResult 改写为实际 BMS，因此显式指明其源自 LDJ 后传入
 			play = mode;
 			readChart(song, bar, true);
 			play = null;
@@ -585,24 +585,24 @@ public final class MusicSelector extends MainState {
 	}
 
 	public void readChart(SongData song, Bar current) {
-		// 変換済みのLDJ譜面はパスが実BMSへ書き換わっているため、仮想スコアキーの有無でも判定する
+		// 已转换的 LDJ 谱面路径已改写为实际 BMS，因此也用虚拟分数键的有无来判定
 		readChart(song, current, LDJSongProvider.isLDJPath(song.getPath()) || song.isLDJChart());
 	}
 
 	/**
-	 * @param fromLDJ LDJ由来の譜面として読み込むか。変換完了後の再読み込みでは、パスが
-	 *                実BMSへ書き換え済みでパスからは判定できないため、呼び出し元が明示する
+	 * @param fromLDJ 是否作为源自 LDJ 的谱面读取，转换完成后的再读取中，路径
+	 *                已改写为实际 BMS，无法从路径判定，因此由调用方显式指定
 	 */
 	public void readChart(SongData song, Bar current, boolean fromLDJ) {
 		if (LDJSongProvider.isLDJPath(song.getPath())) {
-			// 変換でパスが実ファイルへ書き換わっても仮想スコアキーを失わないよう、ここで固定する。
-			// キャッシュヒット時はstartLDJConversion内で同期的にパスが書き換わるため、その前に呼ぶ必要がある
+			// 为使路径因转换改写为实际文件后也不丢失虚拟分数键，在此固定
+			// 缓存命中时会在 startLDJConversion 内同步改写路径，因此必须在此之前调用
 			song.setLDJScoreKey(song.getSha256());
 			if (!startLDJConversion(song, current)) {
-				// 変換を開始した、または開始できなかった。完了時にrender()から読み直す
+				// 已开始转换，或未能开始，完成时由 render() 重新读取
 				return;
 			}
-			// キャッシュヒット。songのパスは実BMSファイルへ書き換え済みなので通常フローへ進む
+			// 缓存命中，song 的路径已改写为实际 BMS 文件，因此进入通常流程
 		}
 		resource.clear();
 		resource.setFromLDJ(fromLDJ);
@@ -628,8 +628,8 @@ public final class MusicSelector extends MainState {
 				}
 			}
 			
-			// LDJ難易度表の譜面は、表名・フォルダ名・譜面ラベルを" | "で繋いでtablefullname(1003)へ流す。
-			// 上のdirループはSameFolderBarで素通りするため、その外側で判定する
+			// LDJ 难度表的谱面，把表名，文件夹名，谱面标签用" | "连接后送入 tablefullname(1003)
+			// 上面的 dir 循环会因 SameFolderBar 直接略过，因此在该循环之外判定
 			String ldjTable = null;
 			String ldjGroup = null;
 			for (DirectoryBar bar : dir) {
@@ -641,7 +641,7 @@ public final class MusicSelector extends MainState {
 			}
 			if (ldjTable != null) {
 				String ldjtablefull = "";
-				// ラベルはSongBarのSongDataに載っている。resource.setBMSFileで実BMSを読み直すため併せてここで取る
+				// 标签存放在 SongBar 的 SongData 中，因为 resource.setBMSFile 会重新读取实际 BMS，所以一并在此获取
 				for (String part : new String[] { ldjTable, ldjGroup, song.getSubtitle() }) {
 					if (part == null || part.isEmpty()) {
 						continue;
