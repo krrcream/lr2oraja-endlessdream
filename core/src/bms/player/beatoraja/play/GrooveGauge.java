@@ -247,7 +247,7 @@ public final class GrooveGauge {
 		}
 
 		/**
-		 * 各判定毎のゲージ増減値を上書きする。値は絶対値として扱われ、GaugeModifierによる補正は受けない。
+		 * 覆盖各判定对应的槽增减量。值按绝对值处理，不受 GaugeModifier 的修正影响。
 		 */
 		public void setGaugeValues(float[] values) {
 			for(int i = 0; i < gauge.length && i < values.length; i++) {
