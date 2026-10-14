@@ -195,6 +195,10 @@ public final class GrooveGauge {
 		 */
 		private final float[] gauge;
 		/**
+		 * 低生命值时扣血量的补正表，默认沿用槽位自带的设置。
+		 */
+		private float[][] guts;
+		/**
 		 * ゲージのクリアタイプ
 		 */
 		private final ClearType cleartype;
@@ -203,6 +207,7 @@ public final class GrooveGauge {
 			this.element = element;
 			this.value = element.init;
 			this.cleartype = cleartype;
+			this.guts = element.guts;
 			this.gauge = element.value.clone();
 			if(element.modifier != null) {
 				for(int i = 0;i < gauge.length;i++) {
@@ -232,7 +237,7 @@ public final class GrooveGauge {
 		public void update(int judge, float rate) {
 			float inc = gauge[judge] * rate;
 			if(inc < 0) {
-				for(float[] gut : element.guts) {
+				for(float[] gut : guts) {
 					if(value < gut[0]) {
 						inc *= gut[1];
 						break;
@@ -253,6 +258,13 @@ public final class GrooveGauge {
 			for(int i = 0; i < gauge.length && i < values.length; i++) {
 				gauge[i] = values[i];
 			}
+		}
+
+		/**
+		 * 覆盖低生命值时的扣血补正表。传 null 表示不做低生命值补正。
+		 */
+		public void setGuts(float[][] guts) {
+			this.guts = guts != null ? guts : new float[0][];
 		}
 		
 		public boolean isQualified() {
