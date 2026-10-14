@@ -327,6 +327,16 @@ public class BooleanPropertyFactory {
 		});
 	}
 	
+	/**
+	 * 结算页でLDJ由来の譜面を「IR未ログイン」として扱うか。
+	 * IR送信が抑制される条件(BMSPlayer参照)のうちLDJ由来の部分と一致させる。
+	 */
+	private static boolean isLDJResult(MainState state) {
+		return state instanceof AbstractResult
+				&& (state.resource.isFromLDJ()
+						|| (state.resource.getSongdata() != null && state.resource.getSongdata().isLDJChart()));
+	}
+
 	public enum BooleanType {
 		
 		bgaoff(40, new DrawProperty(DrawProperty.TYPE_STATIC_WITHOUT_MUSICSELECT, (state) -> (!state.resource.getBMSResource().isBGAOn()))),
@@ -595,8 +605,10 @@ public class BooleanPropertyFactory {
 		result_draw(OPTION_DRAW,new DrawProperty(DrawProperty.TYPE_NO_STATIC, 
 				(state) -> (state.getScoreDataProperty().getNowEXScore() == state.getScoreDataProperty().getRivalScore()))),
 
-		ir_offline(OPTION_OFFLINE, new DrawProperty(DrawProperty.TYPE_STATIC_ALL, (state) -> (state.main.getIRStatus().length == 0))),
-		ir_online(OPTION_ONLINE, new DrawProperty(DrawProperty.TYPE_STATIC_ALL, (state) -> (state.main.getIRStatus().length > 0))),
+		ir_offline(OPTION_OFFLINE, new DrawProperty(DrawProperty.TYPE_STATIC_ALL,
+				(state) -> (state.main.getIRStatus().length == 0) || isLDJResult(state))),
+		ir_online(OPTION_ONLINE, new DrawProperty(DrawProperty.TYPE_STATIC_ALL,
+				(state) -> (state.main.getIRStatus().length > 0) && !isLDJResult(state))),
 		ir_no_player(OPTION_IR_NOPLAYER, new DrawProperty(DrawProperty.TYPE_NO_STATIC, (state) -> {
 			if(state instanceof MusicSelector) {
 				final RankingData irc = ((MusicSelector)state).getCurrentRankingData();
