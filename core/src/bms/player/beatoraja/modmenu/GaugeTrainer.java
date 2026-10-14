@@ -11,47 +11,66 @@ import bms.player.beatoraja.play.GrooveGauge;
  * Each IIDX gauge is mapped onto the beatoraja slot that already means the same thing, so border,
  * death and guts are inherited and only the numbers change:
  *
- *   slot EASY(1)   - IIDX EASY    border 80, no guts
- *   slot NORMAL(2) - IIDX NORMAL  border 80, no guts
- *   slot HARD(3)   - IIDX HARD    death 2, guts {{32, 0.6}}  (IIDX HARD:   Low Life Adj = Yes)
- *   slot EXHARD(4) - IIDX EXHARD  death 2, no guts           (IIDX EXHARD: Low Life Adj = No)
+ *   slot ASSISTEASY(0) - IIDX A-EASY  border 60, no guts
+ *   slot EASY(1)       - IIDX EASY    border 80, no guts
+ *   slot NORMAL(2)     - IIDX NORMAL  border 80, no guts
+ *   slot HARD(3)       - IIDX HARD    death 2, guts {{30, 0.5}}  (IIDX HARD:   Low Life Adj = Yes)
+ *   slot EXHARD(4)     - IIDX EXHARD  death 2, no guts           (IIDX EXHARD: Low Life Adj = No)
  *
- * EASY / NORMAL therefore still pass at 80%, and HARD / EXHARD still clear as long as you don't run
- * out of life - only the drain and recover values differ from the original gauges.
+ * A-EASY / EASY / NORMAL therefore still pass at 60% / 80%, and HARD / EXHARD still clear as long as
+ * you don't run out of life - only the drain and recover values differ from the original gauges.
  *
- * All four slots are overridden rather than only the selected one, because the gauge auto shift can
- * move the active slot mid-song (including a fallback to NORMAL, see BMSPlayer STATE_FINISHED).
- * Course gauges (CLASS / EXCLASS / EXHARDCLASS) are left untouched.
+ * Every slot is opt-in and independent: a slot is only overridden while its own switch is on, so the
+ * play gauge keeps the type the config or the chart gave it and beatoraja classifies the result as
+ * usual. All enabled slots are written at once rather than only the active one, because the gauge
+ * auto shift can move the active slot mid-song (including a fallback to NORMAL, see BMSPlayer
+ * STATE_FINISHED). Course gauges (CLASS / EXCLASS / EXHARDCLASS) are left untouched.
  */
 public class GaugeTrainer {
 
-	/** Index into {@link #GAUGE_OPTIONS}; also the GrooveGauge slot each IIDX gauge is mapped onto. */
+	/** GrooveGauge 的槽位编号，顺序与 IIDX 血条的排列一致。 */
+	public static final int IIDX_AEASY = GrooveGauge.ASSISTEASY;
 	public static final int IIDX_EASY = GrooveGauge.EASY;
 	public static final int IIDX_NORMAL = GrooveGauge.NORMAL;
 	public static final int IIDX_HARD = GrooveGauge.HARD;
 	public static final int IIDX_EXHARD = GrooveGauge.EXHARD;
 
-	public static final String[] GAUGE_OPTIONS = new String[]{
-			"Default", "IIDX EASY", "IIDX NORMAL", "IIDX HARD", "IIDX EXHARD"
-	};
+	/** IIDX 血条的个数，同时也是槽位编号的取值个数。 */
+	public static final int GAUGE_COUNT = 5;
 
-	private static boolean active;
-	private static int gaugeType = IIDX_EASY;
+	/**
+	 * 各 IIDX 血条的开关，下标即 GrooveGauge 的槽位编号（0 = A-EASY … 4 = EX-HARD）。
+	 */
+	private static final boolean[] ENABLED = new boolean[GAUGE_COUNT];
 
-	public static boolean isActive() {
-		return active;
+	/**
+	 * 读取指定槽位的 IIDX 血条是否启用。
+	 *
+	 * @param slot GrooveGauge 的槽位编号
+	 * @return 槽位越界时返回 false
+	 */
+	public static boolean isEnabled(int slot) {
+		return slot >= 0 && slot < ENABLED.length && ENABLED[slot];
 	}
 
-	public static void setActive(boolean active) {
-		GaugeTrainer.active = active;
+	/**
+	 * 设置指定槽位的 IIDX 血条开关。
+	 *
+	 * @param slot GrooveGauge 的槽位编号
+	 * @param enabled 是否启用
+	 */
+	public static void setEnabled(int slot, boolean enabled) {
+		if (slot >= 0 && slot < ENABLED.length) {
+			ENABLED[slot] = enabled;
+		}
 	}
 
-	public static int getGaugeType() {
-		return gaugeType;
-	}
-
-	public static void setGaugeType(int gaugeType) {
-		GaugeTrainer.gaugeType = gaugeType;
+	/**
+	 * IIDX 血条的最低生命值补正：只有 HARD 需要（生命值低于 30 时扣血减半），
+	 * 其余槽位返回 null，表示沿用槽位自带的设置。
+	 */
+	private static float[][] guts(int slot) {
+		return slot == IIDX_HARD ? new float[][]{{30f, 0.5f}} : null;
 	}
 
 	/**
@@ -69,12 +88,13 @@ public class GaugeTrainer {
 	/**
 	 * Values for one gauge slot, already scaled to percent of the gauge.
 	 *
-	 * @param slot EASY / NORMAL / HARD / EXHARD
-	 * @param a the EASY / NORMAL recover amount
+	 * @param slot A-EASY / EASY / NORMAL / HARD / EXHARD
+	 * @param a the A-EASY / EASY / NORMAL recover amount
 	 * @return the six gauge deltas, or null if the slot is not an IIDX gauge
 	 */
 	private static float[] values(int slot, float a) {
 		switch (slot) {
+		case IIDX_AEASY:
 		case IIDX_EASY:
 			return new float[]{a, a, a * 0.5f, -1.6f, -4.8f, -1.6f};
 		case IIDX_NORMAL:
@@ -90,25 +110,30 @@ public class GaugeTrainer {
 
 	/**
 	 * Overrides the gauge just created for this play. Call after the gauge is built and before any
-	 * note is judged. Does nothing when the trainer is off, and never touches course gauges.
+	 * note is judged. Only the slots whose switch is on are written, and course gauges are never
+	 * touched.
 	 *
 	 * @param gauge the play gauge, may be null
 	 * @param model the model being played
 	 */
 	public static void apply(GrooveGauge gauge, BMSModel model) {
-		if (!active || gauge == null || model == null || gauge.isCourseGauge()) {
+		if (gauge == null || model == null || gauge.isCourseGauge()) {
 			return;
 		}
 		final float a = recoverAmount(model);
 		final int length = gauge.getGaugeTypeLength();
-		for (int slot = IIDX_EASY; slot <= IIDX_EXHARD && slot < length; slot++) {
+		for (int slot = IIDX_AEASY; slot <= IIDX_EXHARD && slot < length; slot++) {
+			if (!isEnabled(slot)) {
+				continue;
+			}
 			final float[] delta = values(slot, a);
 			if (delta != null) {
 				gauge.getGauge(slot).setGaugeValues(delta);
+				final float[][] guts = guts(slot);
+				if (guts != null) {
+					gauge.getGauge(slot).setGuts(guts);
+				}
 			}
-		}
-		if (gaugeType >= IIDX_EASY && gaugeType <= IIDX_EXHARD && gaugeType < length) {
-			gauge.setType(gaugeType);
 		}
 	}
 }
