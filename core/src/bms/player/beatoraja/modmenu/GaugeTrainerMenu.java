@@ -12,10 +12,10 @@ import static bms.player.beatoraja.modmenu.ImGuiRenderer.windowWidth;
 public class GaugeTrainerMenu {
 
 	/**
-	 * 单选按钮的显示文字，下标 0 = IIDX type、1 = Beatoraja type。
+	 * 单选按钮的显示文字，目前只有下标 0 = IIDX type。
 	 */
 	private static final String[] GAUGE_TYPE_LABELS = new String[]{
-			"IIDX type", "Beatoraja type"
+			"IIDX type"
 	};
 
 	/**
@@ -47,7 +47,7 @@ public class GaugeTrainerMenu {
 	}
 
 	/**
-	 * IIDX type 等价于 5 个 IIDX 血条全部启用；Beatoraja type 暂未实现，含义是不做任何覆盖。
+	 * IIDX type 等价于 5 个 IIDX 血条全部启用；未选中时不施加任何覆盖。
 	 */
 	private static void applyGaugeType(int type) {
 		boolean iidx = type == GAUGE_TYPE_INDEX_IIDX;
