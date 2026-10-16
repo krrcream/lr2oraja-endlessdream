@@ -24,9 +24,14 @@ public class GaugeTrainerMenu {
 	private static final int GAUGE_TYPE_INDEX_IIDX = 0;
 
 	/**
-	 * 当前选中的血条类型。-1 表示都不选中，此时不施加任何覆盖，成绩照常记录。
+	 * 覆盖血条的总开关。不打勾时下方选的类型一律不生效，成绩照常记录。
 	 */
-	private static final ImInt OVERRIDE_GAUGE_TYPE = new ImInt(-1);
+	private static final ImBoolean OVERRIDE_GAUGE = new ImBoolean(false);
+
+	/**
+	 * 当前选中的血条类型。默认停在 IIDX type，勾上总开关就立刻生效。
+	 */
+	private static final ImInt OVERRIDE_GAUGE_TYPE = new ImInt(GAUGE_TYPE_INDEX_IIDX);
 
 	public static void show(ImBoolean showGaugeTrainer) {
 		float relativeX = windowWidth * 0.455f;
@@ -36,18 +41,31 @@ public class GaugeTrainerMenu {
 		if (ImGui.begin("Gauge Trainer", showGaugeTrainer, ImGuiWindowFlags.AlwaysAutoResize)) {
 			ImGui.textDisabled("If any gauge is enabled, the result will not be recorded");
 			ImGui.textDisabled("In LDJ, the result is still recorded when using the IIDX settings.");
+			if (ImGui.checkbox("Override gauge", OVERRIDE_GAUGE)) {
+				applyGaugeType(selectedGaugeType());
+			}
+			// 总开关没打勾时把类型选择灰掉：这时点它不会有效果，灰掉才不会让人以为已经生效。
+			ImGui.beginDisabled(!OVERRIDE_GAUGE.get());
 			for (int i = 0; i < GAUGE_TYPE_LABELS.length; i++) {
 				if (ImGui.radioButton(GAUGE_TYPE_LABELS[i], OVERRIDE_GAUGE_TYPE, i)) {
-					applyGaugeType(OVERRIDE_GAUGE_TYPE.get());
+					applyGaugeType(selectedGaugeType());
 				}
 			}
+			ImGui.endDisabled();
 			ImGui.textDisabled("Takes effect on the next play.");
 			ImGui.end();
 		}
 	}
 
 	/**
-	 * IIDX type 等价于 5 个 IIDX 血条全部启用；未选中时不施加任何覆盖。
+	 * 总开关没打勾时返回 -1，表示不施加任何覆盖。
+	 */
+	private static int selectedGaugeType() {
+		return OVERRIDE_GAUGE.get() ? OVERRIDE_GAUGE_TYPE.get() : -1;
+	}
+
+	/**
+	 * IIDX type 等价于 5 个 IIDX 血条全部启用；type 为 -1（总开关没打勾）时不施加任何覆盖。
 	 */
 	private static void applyGaugeType(int type) {
 		boolean iidx = type == GAUGE_TYPE_INDEX_IIDX;
