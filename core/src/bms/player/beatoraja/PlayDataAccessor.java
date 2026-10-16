@@ -191,7 +191,8 @@ public final class PlayDataAccessor {
 	 */
 	public ScoreData readScoreData(BMSModel model, int lnmode, boolean ldj) {
 		String hash = model.getSHA256();
-		boolean ln = model.containsUndefinedLongNote();
+		// LDJ 谱面的分数键只有虚拟哈希,不含 LN 判定模式,恒用 mode 0
+		boolean ln = !ldj && model.containsUndefinedLongNote();
 		return readScoreData(hash, ln, lnmode, ldj);
 	}
 
@@ -300,11 +301,12 @@ public final class PlayDataAccessor {
 		if (newscore == null) {
 			return;
 		}
-		ScoreData score = db.getScoreData(hash, model.containsUndefinedLongNote() ? lnmode : 0);
+		// LDJ 谱面的分数键只有虚拟哈希,不含 LN 判定模式,读写都恒用 mode 0
+		ScoreData score = db.getScoreData(hash, ldj ? 0 : (model.containsUndefinedLongNote() ? lnmode : 0));
 
 		if (score == null) {
 			score = new ScoreData();
-			score.setMode(model.containsUndefinedLongNote() ? lnmode : 0);
+			score.setMode(ldj ? 0 : (model.containsUndefinedLongNote() ? lnmode : 0));
 		}
 		score.setSha256(hash);
 		if (updateScore) {
