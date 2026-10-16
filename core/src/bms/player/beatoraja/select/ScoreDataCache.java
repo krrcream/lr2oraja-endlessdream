@@ -36,7 +36,7 @@ public abstract class ScoreDataCache {
      */
     @Nullable
     public ScoreData readScoreData(SongData song, int lnmode) {
-        final int cacheindex = song.hasAnyLongNote() ? lnmode : 3;
+        final int cacheindex = getCacheIndex(song, lnmode);
         if (scorecache[cacheindex].containsKey(song.getSha256())) {
             return scorecache[cacheindex].get(song.getSha256());
         }
@@ -55,7 +55,7 @@ public abstract class ScoreDataCache {
         // キャッシュからの抽出
         Array<SongData> noscore = null;
         for (SongData song : songs) {
-            final int cacheindex = song.hasAnyLongNote() ? lnmode : 3;
+            final int cacheindex = getCacheIndex(song, lnmode);
 
             if (scorecache[cacheindex].containsKey(song.getSha256())) {
                 collector.collect(song, scorecache[cacheindex].get(song.getSha256()));
@@ -74,7 +74,7 @@ public abstract class ScoreDataCache {
         final SongData[] noscores = noscore.toArray(SongData.class);
 
         final ScoreDataCollector cachecollector = (song, score) -> {
-            final int cacheindex = song.hasAnyLongNote() ? lnmode : 3;
+            final int cacheindex = getCacheIndex(song, lnmode);
             scorecache[cacheindex].put(song.getSha256(), score);
         	collector.collect(song, score);
         };
@@ -82,7 +82,7 @@ public abstract class ScoreDataCache {
     }
 
     boolean existsScoreDataCache(SongData song, int lnmode) {
-        final int cacheindex = song.hasAnyLongNote() ? lnmode : 3;
+        final int cacheindex = getCacheIndex(song, lnmode);
         return scorecache[cacheindex].containsKey(song.getSha256());
     }
 
@@ -93,9 +93,20 @@ public abstract class ScoreDataCache {
     }
 
     public void update(SongData song, int lnmode) {
-        final int cacheindex = song.hasAnyLongNote() ? lnmode : 3;
+        final int cacheindex = getCacheIndex(song, lnmode);
         ScoreData score = readScoreDatasFromSource(song, lnmode);
         scorecache[cacheindex].put(song.getSha256(), score);
+    }
+
+    /**
+     * 返回曲目在缓存中使用的分桶编号
+     *
+     * <p>LDJ 谱面固定用 3：它的分数键不含 LN 判定模式，且解码真实文件前后
+     * hasAnyLongNote() 会由 false 变成 true，桶跟着变会让同一谱面缓存出两份，
+     * 打完后的更新写进新桶，选曲画面却仍读旧桶里的 null。</p>
+     */
+    private int getCacheIndex(SongData song, int lnmode) {
+        return song.isLDJChart() ? 3 : (song.hasAnyLongNote() ? lnmode : 3);
     }
 
     protected abstract ScoreData readScoreDatasFromSource(SongData songs, int lnmode);

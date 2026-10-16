@@ -225,7 +225,8 @@ public final class PlayDataAccessor {
 	 * @return 分数数据
 	 */
 	public ScoreData readScoreData(String hash, boolean ln, int lnmode, boolean ldj) {
-		return (ldj ? ldjscoredb : scoredb).getScoreData(hash, ln ? lnmode : 0);
+		// LDJ 谱面的分数键只有虚拟哈希,不含 LN 判定模式,恒用 mode 0
+		return (ldj ? ldjscoredb : scoredb).getScoreData(hash, (ln && !ldj) ? lnmode : 0);
 	}
 
 	/**
@@ -258,7 +259,8 @@ public final class PlayDataAccessor {
 			}
 			scoredb.getScoreDatas(collector, others.toArray(new SongData[others.size()]), lnmode);
 		}
-		ldjscoredb.getScoreDatas(collector, ldjsongs.toArray(new SongData[ldjsongs.size()]), lnmode);
+		// LDJ 谱面的分数键只有虚拟哈希,不含 LN 判定模式,批量读取同样恒用 mode 0
+		ldjscoredb.getScoreDatas(collector, ldjsongs.toArray(new SongData[ldjsongs.size()]), 0);
 	}
 
 	public List<ScoreData> readScoreDatas(String sql) {
