@@ -28,6 +28,7 @@ public class JudgeTrainerMenu {
             ImGui.textDisabled("Stricter judge window than the chart's own: the result is recorded normally.");
             ImGui.textDisabled("Looser judge window than the chart's own: treated as an assist option, the result will not be saved.");
             ImGui.textDisabled("IIDX-Like: treated as an assist option, the result will not be saved.");
+            ImGui.textDisabled("In LDJ, the result is still recorded when using the IIDX settings.");
             ImGui.textDisabled("Takes effect on the next play.");
             ImGui.end();
         }
