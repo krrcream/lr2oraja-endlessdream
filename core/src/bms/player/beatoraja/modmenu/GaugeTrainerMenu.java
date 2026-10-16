@@ -34,7 +34,7 @@ public class GaugeTrainerMenu {
 		ImGui.setWindowPos(relativeX, relativeY, ImGuiCond.FirstUseEver);
 
 		if (ImGui.begin("Gauge Trainer", showGaugeTrainer, ImGuiWindowFlags.AlwaysAutoResize)) {
-			ImGui.textDisabled("If enabled, the result will be saved as an A-Clear record");
+			ImGui.textDisabled("If any gauge is enabled, the result will not be recorded");
 			for (int i = 0; i < OVERRIDE_GAUGE.length; i++) {
 				if (ImGui.checkbox(GAUGE_LABELS[i], OVERRIDE_GAUGE[i])) {
 					GaugeTrainer.setEnabled(i, OVERRIDE_GAUGE[i].get());
