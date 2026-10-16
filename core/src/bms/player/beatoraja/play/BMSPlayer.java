@@ -219,6 +219,10 @@ public class BMSPlayer extends MainState {
 		boolean score = true;
 		boolean forceNoIRSend = false;
 
+		// 是否 LDJ 谱面。与下方 IR 发送抑制使用同一条件，集中在此处求值以免两处判定分叉
+		boolean ldjChart = resource.isFromLDJ()
+				|| (resource.getSongdata() != null && resource.getSongdata().isLDJChart());
+
 		// Allow osu score submission
 		if (model.isFromOSU()) {
 			forceNoIRSend = false;
@@ -286,7 +290,10 @@ public class BMSPlayer extends MainState {
 				// IIDX-Like Type replaces the judge windows in JudgeManager and must not go through
 				// the judge rank override below (getJudgeWindowRate returns a sentinel for it).
 				assist = Math.max(assist, 2);
-				score = false;
+				// LDJ 谱面例外：仍然记录到 ldjscore.db。LDJ 之外维持原有行为
+				if (!ldjChart) {
+					score = false;
+				}
 			} else if (JudgeTrainer.isActive()) {
 				// This could work since beatoraja would firstly convert the judge rank that is not defined as
 				// the window rate to it and directly mark the model as BMSON type (see BMSPlayerRule::validate)
@@ -303,7 +310,8 @@ public class BMSPlayer extends MainState {
 
 			// Gauge Trainer 启用任一 IIDX 血条后完全不记录成绩（不是算作 assist clear，而是根本不保存）。
 			// 这里只能按「开关有没有打开」判定：本次实际生效的槽位要到下方 GaugeTrainer.apply 才确定。
-			if (GaugeTrainer.isActive()) {
+			// LDJ 谱面例外：仍然记录到 ldjscore.db。LDJ 之外维持原有行为
+			if (GaugeTrainer.isActive() && !ldjChart) {
 				score = false;
 			}
 
@@ -492,8 +500,7 @@ public class BMSPlayer extends MainState {
 		}
 		// 源自 LDJ 的谱面在本地保留成绩，但不向 IR 发送
 		// 转换后无法从路径判定是否源自 LDJ，因此也用 SongData 持有的虚拟分数键判定
-		forceNoIRSend |= resource.isFromLDJ()
-				|| (resource.getSongdata() != null && resource.getSongdata().isLDJChart());
+		forceNoIRSend |= ldjChart;
 		if (forceNoIRSend) {
 			ImGuiNotify.error("Special mod options enabled. Next play will not be submitted to IR");
 		}
