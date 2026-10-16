@@ -287,11 +287,12 @@ public class BMSPlayer extends MainState {
 
 			// Override judge rank
 			if (JudgeTrainer.isIidxLike()) {
-				// IIDX-Like Type replaces the judge windows in JudgeManager and must not go through
+				// IIDX-Like replaces the judge windows in JudgeManager and must not go through
 				// the judge rank override below (getJudgeWindowRate returns a sentinel for it).
-				assist = Math.max(assist, 2);
-				// LDJ 谱面例外：仍然记录到 ldjscore.db。LDJ 之外维持原有行为
+				// LDJ 谱面例外：照常记录成绩（写进 ldjscore.db），也不算 assist clear、不弹提示。
+				// LDJ 之外维持原有行为：算 assist clear，且本次成绩不保存。
 				if (!ldjChart) {
+					assist = Math.max(assist, 2);
 					score = false;
 				}
 			} else if (JudgeTrainer.isBeatorajaJudge()) {
