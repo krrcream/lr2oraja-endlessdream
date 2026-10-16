@@ -20,9 +20,10 @@ import bms.player.beatoraja.song.FolderData;
  * 对于 1 首曲子都不剩的分组，{@link #createIfAvailable} 会返回 null，
  * 以避免变成选中后什么也不会发生的死栏.
  *
- * 排列顺序为 difficultyValue 升序.该值被规定为决定表内排列顺序的值，
- * 取值相同时保持 json 的排列顺序(Collections.sort 是稳定排序).
- * 该栏禁用排序.若保持启用，用户的 BarSorter 会打乱表的排列.
+ * 该栏启用排序，因此实际显示顺序由玩家当前的排序模式决定.
+ * 下方创建时的 difficultyValue 升序只是基准顺序，玩家切换排序模式后就会被覆盖.
+ * LEVEL 排序在表内改按 difficultyValue 比较(见 {@link bms.player.beatoraja.select.BarSorter})，
+ * 皮肤显示的 LEVEL 仍取曲目本身的 LEVEL.
  *
  * @author endlessdream
  */
@@ -40,7 +41,7 @@ public class LDJTableGroupBar extends FolderBar {
 
 	private LDJTableGroupBar(MusicSelector selector, String title, SongBar[] songs) {
 		super(selector, createFolderData(title), "");
-		setSortable(false);
+		setSortable(true);
 		this.songs = songs;
 	}
 

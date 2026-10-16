@@ -18,6 +18,7 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 
 import bms.player.beatoraja.ldj.LDJChartRef.Difficulty;
+import bms.player.beatoraja.select.bar.LDJTableSongBar;
 import bms.player.beatoraja.select.bar.SongBar;
 import bms.player.beatoraja.song.SongData;
 
@@ -122,6 +123,9 @@ public final class LDJTableProvider {
 	 * <p>找不到曲目元数据时，以及该难度的谱面不存在时，返回 null.
 	 * 调用方应丢弃 null，不要生成一个曲目都不剩的分组.</p>
 	 *
+	 * <p>返回的实例是 {@link LDJTableSongBar}，额外携带表 json 的 difficultyValue，
+	 * 供表内 LEVEL 排序使用.</p>
+	 *
 	 * @param group 该谱面所属的分组.分组名会显示在曲名之后
 	 * @param chart 表所指向的谱面
 	 * @return 对应虚拟路径的 SongBar.无法生成时为 null
@@ -154,7 +158,7 @@ public final class LDJTableProvider {
 		} else {
 			song.setSubtitle(groupName + " " + label);
 		}
-		return new SongBar(song);
+		return new LDJTableSongBar(song, chart.getDifficultyValue());
 	}
 
 	private synchronized void scan() {
