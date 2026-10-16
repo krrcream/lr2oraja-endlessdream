@@ -122,11 +122,12 @@ public final class LDJTableProvider {
 	 * <p>找不到曲目元数据时，以及该难度的谱面不存在时，返回 null.
 	 * 调用方应丢弃 null，不要生成一个曲目都不剩的分组.</p>
 	 *
+	 * @param group 该谱面所属的分组.分组名会显示在曲名之后
 	 * @param chart 表所指向的谱面
 	 * @return 对应虚拟路径的 SongBar.无法生成时为 null
 	 */
-	public SongBar createSongBar(LDJTableData.Chart chart) {
-		if (chart == null || !chart.isValid()) {
+	public SongBar createSongBar(LDJTableData.Group group, LDJTableData.Chart chart) {
+		if (group == null || chart == null || !chart.isValid()) {
 			return null;
 		}
 
@@ -143,9 +144,15 @@ public final class LDJTableProvider {
 		}
 
 		final SongData song = LDJSongProvider.createSongData(meta, difficulty);
-		// 把由难度值派生的子标签直接显示在曲名之后
-		if (!chart.getLabel().isEmpty()) {
-			song.setSubtitle(chart.getLabel());
+		// 曲名之后依次显示所属分组名与难度标签，中间用 1 个空格隔开
+		final String groupName = group.getName();
+		final String label = chart.getLabel();
+		if (groupName.isEmpty()) {
+			song.setSubtitle(label);
+		} else if (label.isEmpty()) {
+			song.setSubtitle(groupName);
+		} else {
+			song.setSubtitle(groupName + " " + label);
 		}
 		return new SongBar(song);
 	}

@@ -14,8 +14,9 @@ import bms.player.beatoraja.song.FolderData;
  * 对应 LDJ 难度表 1 个分组的虚拟文件夹.子项是实际的 {@link SongBar}.
  *
  * 表的分组名直接成为该栏的标题，其下排列表中指定的谱面.
- * 谱面由 {@link LDJTableProvider#createSongBar(LDJTableData.Chart)} 创建，因此
+ * 谱面由 {@link LDJTableProvider#createSongBar(LDJTableData.Group, LDJTableData.Chart)} 创建，因此
  * music_data.json 中没有的曲目，以及没有该难度谱面的曲目会在这里被剔除.
+ * 生成时会把分组名一并传下去，让分组名也显示在该栏曲目的曲名之后.
  * 对于 1 首曲子都不剩的分组，{@link #createIfAvailable} 会返回 null，
  * 以避免变成选中后什么也不会发生的死栏.
  *
@@ -56,7 +57,7 @@ public class LDJTableGroupBar extends FolderBar {
 		Collections.sort(charts, DIFFICULTY_VALUE_ORDER);
 		final List<SongBar> songs = new ArrayList<SongBar>();
 		for (LDJTableData.Chart chart : charts) {
-			final SongBar bar = provider.createSongBar(chart);
+			final SongBar bar = provider.createSongBar(group, chart);
 			if (bar != null) {
 				songs.add(bar);
 			}
