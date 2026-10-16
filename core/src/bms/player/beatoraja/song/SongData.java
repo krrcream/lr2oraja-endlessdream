@@ -140,8 +140,12 @@ public class SongData implements Validatable, IpfsInformation {
 		}
 		this.model = model;
 		BMSPlayerRule.validate(model);
-		setTitle(model.getTitle());
-		setSubtitle(model.getSubTitle());
+		if (!isLDJChart()) {
+			// LDJ 谱面的曲名来自 music_data.json、副标题是难度表里的 label，
+			// 解码转换后的文件时若被 BMS 头信息覆盖，选曲画面上显示的表标签就会消失
+			setTitle(model.getTitle());
+			setSubtitle(model.getSubTitle());
+		}
 		genre = model.getGenre();
 		setArtist(model.getArtist());
 		setSubartist(model.getSubArtist());
