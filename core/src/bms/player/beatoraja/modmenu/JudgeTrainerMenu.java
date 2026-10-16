@@ -25,6 +25,10 @@ public class JudgeTrainerMenu {
             if (ImGui.combo("judge", OVERRIDE_JUDGE_RANK, JudgeTrainer.JUDGE_OPTIONS)) {
                 JudgeTrainer.setJudgeRank(OVERRIDE_JUDGE_RANK.get());
             }
+            ImGui.textDisabled("Stricter judge window than the chart's own: the result is recorded normally.");
+            ImGui.textDisabled("Looser judge window than the chart's own: treated as an assist option, the result will not be saved.");
+            ImGui.textDisabled("IIDX-Like: treated as an assist option, the result will not be saved.");
+            ImGui.textDisabled("Takes effect on the next play.");
             ImGui.end();
         }
     }

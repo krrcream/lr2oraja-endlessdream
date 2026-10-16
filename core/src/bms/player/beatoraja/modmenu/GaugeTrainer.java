@@ -66,6 +66,23 @@ public class GaugeTrainer {
 	}
 
 	/**
+	 * 是否有任一槽位的 IIDX 血条处于启用状态。
+	 *
+	 * 判定与具体谱面无关，因为启用哪个槽位是玩家的开关，而本次实际生效的槽位要到
+	 * {@link #apply} 时才由上游的 GrooveGauge 决定。
+	 *
+	 * @return 任一槽位启用时返回 true
+	 */
+	public static boolean isActive() {
+		for (boolean enabled : ENABLED) {
+			if (enabled) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * IIDX 血条的最低生命值补正：只有 HARD 需要（生命值低于 30 时扣血减半），
 	 * 其余槽位返回 null，表示沿用槽位自带的设置。
 	 */

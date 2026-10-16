@@ -9,11 +9,12 @@ public class JudgeTrainer {
     };
     public static final int IIDX_LIKE_INDEX = JUDGE_OPTIONS.length - 1;
 
-    // IIDX (most charts) windows, rounded to whole milliseconds from iidx.org's
-    // 16.67 / 33.33 / 116.67 / 250 ms. Order is PGREAT, GREAT, GOOD, BAD.
-    // 4 rows only: long note release judging expects exactly 4 rows (LR2 does the same).
+    // IIDX（大多数谱面）的判定窗口，单位微秒，顺序为 PGREAT、GREAT、GOOD、BAD。
+    // 取值来自 iidx.org 的 1 / 2 / 7 / 15 帧 @60fps，即 16666.67 / 33333.33 / 116666.67 / 250000 微秒，
+    // 四舍五入到最近的整数微秒。
+    // 只保留 4 行：长条松手判定要求正好 4 行（LR2 也是这个行数）。
     public static final long[][] IIDX_WINDOW = new long[][]{
-            {-17000, 17000}, {-33000, 33000}, {-117000, 117000}, {-250000, 250000}
+            {-16667, 16667}, {-33333, 33333}, {-116667, 116667}, {-250000, 250000}
     };
     // 5 rows: note / long note press judging, index 4 is the excessive POOR window
     // (kept as LR2's, since iidx.org does not state IIDX's exact value).
