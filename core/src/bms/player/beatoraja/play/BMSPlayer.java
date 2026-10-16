@@ -294,6 +294,11 @@ public class BMSPlayer extends MainState {
 				if (!ldjChart) {
 					score = false;
 				}
+			} else if (JudgeTrainer.isBeatorajaJudge()) {
+				// Beatoraja Easy / Normal：判定窗口同样在 JudgeManager 里直接覆盖，不走这里的判定等级缩放。
+				// 这两个选项代表另一套判定体系，全局一律不记录成绩（LDJ 谱面没有例外）。
+				// 不计入 assist：它不是 assist clear，只是本次成绩不保存。
+				score = false;
 			} else if (JudgeTrainer.isActive()) {
 				// This could work since beatoraja would firstly convert the judge rank that is not defined as
 				// the window rate to it and directly mark the model as BMSON type (see BMSPlayerRule::validate)

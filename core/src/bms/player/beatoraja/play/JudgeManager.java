@@ -201,14 +201,16 @@ public class JudgeManager {
         scnendmjudge = rule.getJudge(NoteType.LONGSCRATCH_END, judgerank, scratchJudgeWindowRate);
         sreleasemargin = rule.longscratchMargin;
 
-        // IIDX-Like Type trainer: replace the scaled windows outright, since the judge rank
-        // percentage scaling above cannot express IIDX's window shape (it caps GOOD at 120ms
-        // and forces BAD to 200ms). Must run before mjudgestart/mjudgeend are derived below.
-        if (JudgeTrainer.isIidxLike()) {
-            nmjudge = JudgeTrainer.IIDX_NOTE;
-            smjudge = JudgeTrainer.IIDX_NOTE;
-            cnendmjudge = JudgeTrainer.IIDX_WINDOW;
-            scnendmjudge = JudgeTrainer.IIDX_WINDOW;
+        // Trainer 的直接覆盖（IIDX-Like Type / Beatoraja Easy / Beatoraja Normal）：不只是换一套判定窗口的
+        // 数值，还要绕开上面的百分比缩放——缩放无法表达这些选项的窗口形状（会把 GOOD 卡在 120ms、把 BAD
+        // 固定成 200ms）。必须在下方推导 mjudgestart/mjudgeend 之前执行。
+        long[][] directNote = JudgeTrainer.getDirectNoteWindow();
+        if (directNote != null) {
+            long[][] directRelease = JudgeTrainer.getDirectReleaseWindow();
+            nmjudge = directNote;
+            smjudge = directNote;
+            cnendmjudge = directRelease;
+            scnendmjudge = directRelease;
         }
 
         mjudgestart = mjudgeend = 0;
