@@ -128,6 +128,8 @@ public final class MusicSelector extends MainState {
 	// isAlive() 进行的完成检测不保证 happens-before，因此 worker 写入的字段设为 volatile
 	private volatile LDJConversionService.Result ldjResult;
 	private volatile String ldjError;
+	// 转换成功也可能带警告(例如走了目录回退)，因此与 ldjError 分开保存
+	private volatile String ldjWarning;
 	private boolean ldjProceedRead = false;
 	private volatile int ldjProgress = -1;
 	private volatile String ldjStage = "";
@@ -315,6 +317,7 @@ public final class MusicSelector extends MainState {
 		}
 
 		ldjError = null;
+		ldjWarning = null;
 		ldjResult = null;
 		try {
 			final LDJConversionService.Result cached = ldjConverter.readCachedResult(newLDJRequest(ref, null));
@@ -371,6 +374,9 @@ public final class MusicSelector extends MainState {
 						@Override
 						public void onWarning(String message) {
 							logger.warn("iidx2bms: {}", message);
+							// 这里跑在转换线程上，不能直接调 ImGuiNotify，
+							// 只记录，由 UI 线程在完成通知里提示
+							ldjWarning = message;
 						}
 					});
 			// 移动到缓存，即使移动失败也会返回同一目录，因此直接使用
@@ -400,6 +406,7 @@ public final class MusicSelector extends MainState {
 		}
 		final LDJConversionService.Result result = ldjResult;
 		final String error = ldjError;
+		final String warning = ldjWarning;
 		final SongData song = ldjSong;
 		final Bar bar = ldjBarAtStart;
 		final BMSPlayerMode mode = ldjMode;
@@ -407,6 +414,7 @@ public final class MusicSelector extends MainState {
 		ldjProceedRead = false;
 		ldjResult = null;
 		ldjError = null;
+		ldjWarning = null;
 		ldjSong = null;
 		ldjBarAtStart = null;
 		ldjMode = null;
@@ -427,6 +435,11 @@ public final class MusicSelector extends MainState {
 		} else if (result != null) {
 			ImGuiNotify.error("LDJ譜面の変換結果から譜面を読み込めませんでした: "
 					+ (song != null ? song.getPath() : ""));
+		}
+		// 警告不是失败(例如 32283 这类歌只能走目录回退)，因此不放在上面的分支里，
+		// 成功的转换照样要把警告提示出来
+		if (warning != null) {
+			ImGuiNotify.warning("LDJ譜面の変換で警告が発生しました: " + warning);
 		}
 	}
 
