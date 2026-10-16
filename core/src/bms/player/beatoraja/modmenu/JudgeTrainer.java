@@ -5,9 +5,9 @@ import bms.player.beatoraja.play.BMSPlayerRule;
 
 public class JudgeTrainer {
     public static final String[] JUDGE_OPTIONS = new String[]{
-            "EASY", "NORMAL", "HARD", "VERY_HARD", "IIDX-Like Type", "Beatoraja Easy", "Beatoraja Normal"
+            "EASY", "NORMAL", "HARD", "VERY_HARD", "IIDX-Like", "Beatoraja Easy", "Beatoraja Normal"
     };
-    /** IIDX-Like Type 在 {@link #JUDGE_OPTIONS} 中的下标。 */
+    /** IIDX-Like 在 {@link #JUDGE_OPTIONS} 中的下标。 */
     public static final int IIDX_LIKE_INDEX = 4;
     /** Beatoraja Easy 在 {@link #JUDGE_OPTIONS} 中的下标。 */
     public static final int BEATORAJA_EASY_INDEX = 5;
@@ -65,7 +65,7 @@ public class JudgeTrainer {
     }
 
     /**
-     * IIDX-Like Type does not go through the judge rank percentage scaling at all; it replaces the
+     * IIDX-Like does not go through the judge rank percentage scaling at all; it replaces the
      * materialized judge windows directly in JudgeManager.
      */
     public static boolean isIidxLike() {
