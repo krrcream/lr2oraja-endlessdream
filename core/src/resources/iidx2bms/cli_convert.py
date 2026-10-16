@@ -262,39 +262,70 @@ def _dir_has_chart_payload(song_dir: Path, song_id_display: str) -> bool:
     return (song_dir / f"{song_id_display}.2dx").is_file() or (song_dir / f"{song_id_display}.s3p").is_file()
 
 
-def apply_dir_fallback_patch() -> bool:
-    """让上游把已解包目录 sound/<id>/ 也当成一种谱面来源。
+def _chart_payload_from_extracted_dir(extracted_chart_dir: Path, song_id_display: str) -> dict[str, Path] | None:
+    """在一份已解包的 IFS 载荷目录里挑出可用的三件套，挑不出返回 None。
 
-    有 393 首歌的 sound/<id>/ 里躺着一套完整的谱面(<id>.1 加 <id>.2dx)，
-    却既没有 <id>.s3p(不满足上游的 trio 判定)，也没有 <id>.ifs(拿不到 IFS 载荷)，
-    于是 _find_chart_source 对它们一律抛 "Chart source files not found"，
-    这些歌从来没有转换成功过。这个目录本身就是 IFS 解包后的样子，
-    把它直接当作 IFS 载荷喂给 _prepare_from_ifs，下游链路与解包路径完全一致。
+    与上游的差别只有一条：不要求目录里的文件集与标准三件套完全相等。
+    主音频(<id>.2dx 或 <id>.s3p)与 <id>_pre.2dx 都在场就够了，
+    多出来的文件(<id>a.2dx / <id>w.2dx 旁支容器、<id>N.2dx 分块等)一律忽略。
+    只有分块、没有 <id>.2dx 与 <id>.s3p 的包(13 首)在这里挑不出主音频，返回 None。
+    """
+    one_file = extracted_chart_dir / f"{song_id_display}.1"
+    audio_2dx_file = extracted_chart_dir / f"{song_id_display}.2dx"
+    audio_s3p_file = extracted_chart_dir / f"{song_id_display}.s3p"
+    preview_file = extracted_chart_dir / f"{song_id_display}_pre.2dx"
+    # 两个容器同时在场的包(如 27100)取 .2dx，与上游自己的偏好一致
+    audio_file = audio_2dx_file if audio_2dx_file.is_file() else audio_s3p_file
+    if not one_file.is_file() or not audio_file.is_file() or not preview_file.is_file():
+        return None
+    return {"one": one_file, "audio": audio_file, "preview": preview_file}
+
+
+def apply_chart_source_patch() -> dict[str, bool]:
+    """放宽上游的谱面来源判定与 IFS 载荷判定，多救回两类歌。
+
+    这两类歌的文件都在 sound 目录里、谱面也齐全，却因为上游的判定过严而失败：
+
+    1. 目录回退(dir_fallback)：393 首歌的 sound/<id>/ 里有一套完整谱面
+       (<id>.1 加 <id>.2dx)，却既没有 <id>.s3p(不满足上游的 trio 判定)，
+       也没有 <id>.ifs(拿不到 IFS 载荷)，于是 _find_chart_source 对它们一律抛
+       "Chart source files not found"，这些歌从来没有转换成功过。
+       这个目录本身就是 IFS 解包后的样子，把它直接当作 IFS 载荷喂给
+       _prepare_from_ifs，下游链路与解包路径完全一致。
+    2. 非标准 IFS(nonstd_ifs_accept)：24 首歌的 <id>.ifs 解开后除了标准三件套
+       还多一个旁支容器(<id>a.2dx / <id>w.2dx 等)，上游要求文件集与标准三件套
+       完全相等，于是抛 "is non-standard" 拒绝转换。这些包的 <id>.1、主音频与
+       <id>_pre.2dx 都在场，忽略多出来的文件就能转。
 
     做法是包裹上游的 _find_chart_source 与 _prepare_from_ifs：
       * 来源选择：先调用原函数，成功就原样返回，保证原有四道判定的顺序不变
         (有 73 首歌同时有根目录 <id>.ifs 和 sound/<id>/，它们必须继续走 ifs)；
         只有原函数抛 RuntimeError 时才看 sound/<id>/，不满足条件就把原异常抛回去。
-      * 载荷准备：这条回退路径上 "ifs" 键是目录而不是文件，此时跳过 IFS 解包，
-        从目录里取 <id>.1、主音频与 <id>_pre.2dx，其余文件(<id>N.2dx 分块、
-        <id>a.2dx 旁支等)一律忽略。仍然复用 "ifs" 这个 kind：上游 "standard"
-        分支写死了 _extract_wavs_from_s3p，而这里的主音频全是 .2dx，选错必失败。
+      * 载荷准备：先让原函数照常跑。目录回退传进来的 "ifs" 键是目录而不是文件，
+        此时跳过 IFS 解包，从目录里取三件套。非标准包只接管原函数抛出的
+        "is non-standard" 这一种失败(靠报错文本判断确实脆，但上游没给出别的信号)，
+        此时上游已经把这个包解在 work_dir/<id>_ifs/<id>，直接复用那份文件，
+        省掉一次解包；仍然挑不出主音频的包(13 首分块音频)原样抛出上游的报错。
+        两条路径都复用 "ifs" 这个 kind：上游 "standard" 分支写死了
+        _extract_wavs_from_s3p，而这里的主音频全是 .2dx，选错必失败。
+      * 这两种包都不保证音频完整(分块与旁支容器都不参与音源提取)，照发 warning。
 
-    返回本次是否装上了补丁。上游若把这两个私有入口重构掉，这里只发 warning
-    并返回 False，转换退回上游原有行为，绝不因此失败。
+    返回补丁层的标志位，供 manifest 记录。上游若把这些私有入口重构掉，
+    这里只发 warning 并返回全 False，转换退回上游原有行为，绝不因此失败。
     """
+    patch_flags = {"dir_fallback": False, "nonstd_ifs_accept": False}
     try:
         from conversion import conversion as conversion_module  # noqa: PLC0415
         from conversion.conversion import _copy_chart_files  # noqa: PLC0415
     except ImportError as exc:
-        emit({"type": "warning", "message": f"dir fallback patch skipped: {type(exc).__name__}: {exc}"})
-        return False
+        emit({"type": "warning", "message": f"chart source patch skipped: {type(exc).__name__}: {exc}"})
+        return patch_flags
 
     original_find_chart_source = getattr(conversion_module, "_find_chart_source", None)
     original_prepare_from_ifs = getattr(conversion_module, "_prepare_from_ifs", None)
     if not callable(original_find_chart_source) or not callable(original_prepare_from_ifs):
-        emit({"type": "warning", "message": "dir fallback patch skipped: upstream entry points are missing"})
-        return False
+        emit({"type": "warning", "message": "chart source patch skipped: upstream entry points are missing"})
+        return patch_flags
 
     def find_chart_source(sound_root: Path, song_id_display: str):
         try:
@@ -308,39 +339,70 @@ def apply_dir_fallback_patch() -> bool:
         raise original_error
 
     def prepare_from_ifs(project_root: Path, work_dir: Path, song_id_display: str, ifs_file: Path):
-        if not Path(ifs_file).is_dir():
+        if Path(ifs_file).is_dir():
+            # 目录回退：ifs_file 其实是 sound/<id>/ 这个已解包目录，没有 IFS 可解。
+            song_dir = Path(ifs_file)
+            one_file = song_dir / f"{song_id_display}.1"
+            audio_2dx_file = song_dir / f"{song_id_display}.2dx"
+            audio_s3p_file = song_dir / f"{song_id_display}.s3p"
+            preview_file = song_dir / f"{song_id_display}_pre.2dx"
+            audio_file = audio_2dx_file if audio_2dx_file.is_file() else audio_s3p_file
+            if not one_file.is_file() or not audio_file.is_file():
+                raise RuntimeError(f"Chart source folder {song_dir} has no {song_id_display}.1 with audio")
+            if not preview_file.is_file():
+                raise RuntimeError(f"Chart source folder {song_dir} has no {song_id_display}_pre.2dx")
+
+            emit(
+                {
+                    "type": "warning",
+                    "message": (
+                        f"Chart {song_id_display}: {song_id_display}.ifs not found, "
+                        f"using the pre-unpacked folder {song_dir.name} as the IFS payload"
+                    ),
+                }
+            )
+            return _copy_chart_files({"one": one_file, "audio": audio_file, "preview": preview_file}, work_dir)
+
+        try:
             return original_prepare_from_ifs(project_root, work_dir, song_id_display, ifs_file)
+        except RuntimeError as exc:
+            # 只接管文件集「非标准」这一种失败；解不开包、缺 <id>_pre.2dx 等
+            # 其他失败原样抛回，报错文本不变
+            if "is non-standard" not in str(exc):
+                raise
+            original_error = exc
 
-        # 目录回退：ifs_file 其实是 sound/<id>/ 这个已解包目录，没有 IFS 可解。
-        song_dir = Path(ifs_file)
-        one_file = song_dir / f"{song_id_display}.1"
-        audio_2dx_file = song_dir / f"{song_id_display}.2dx"
-        audio_s3p_file = song_dir / f"{song_id_display}.s3p"
-        preview_file = song_dir / f"{song_id_display}_pre.2dx"
-        audio_file = audio_2dx_file if audio_2dx_file.is_file() else audio_s3p_file
-        if not one_file.is_file() or not audio_file.is_file():
-            raise RuntimeError(f"Chart source folder {song_dir} has no {song_id_display}.1 with audio")
-        if not preview_file.is_file():
-            raise RuntimeError(f"Chart source folder {song_dir} has no {song_id_display}_pre.2dx")
+        # 上游已经把这个包解在 work_dir/<id>_ifs/<id> 下；这里直接接着用它，
+        # 顺带也说明为什么找不到这个目录时要退回上游原来的报错
+        chart_dir = Path(work_dir) / f"{song_id_display}_ifs" / str(song_id_display)
+        files = _chart_payload_from_extracted_dir(chart_dir, str(song_id_display)) if chart_dir.is_dir() else None
+        if files is None:
+            # 主音频被切成 <id>N.2dx 分片的包(13 首)救不了，原样抛出上游的报错
+            raise original_error
 
+        selected_names = {item.name for item in files.values()}
+        ignored = sorted(
+            path.name for path in chart_dir.iterdir() if path.is_file() and path.name not in selected_names
+        )
         emit(
             {
                 "type": "warning",
                 "message": (
-                    f"Chart {song_id_display}: {song_id_display}.ifs not found, "
-                    f"using the pre-unpacked folder {song_dir.name} as the IFS payload"
+                    f"Chart {song_id_display}: {song_id_display}.ifs is non-standard, "
+                    f"ignoring {ignored} and using {files['audio'].name} as the main audio; "
+                    f"the audio may be incomplete"
                 ),
             }
         )
-        return _copy_chart_files({"one": one_file, "audio": audio_file, "preview": preview_file}, work_dir)
+        return _copy_chart_files(files, work_dir)
 
     try:
         conversion_module._find_chart_source = find_chart_source
         conversion_module._prepare_from_ifs = prepare_from_ifs
     except Exception as exc:  # noqa: BLE001 - 装不上就退回上游行为
-        emit({"type": "warning", "message": f"dir fallback patch skipped: {type(exc).__name__}: {exc}"})
-        return False
-    return True
+        emit({"type": "warning", "message": f"chart source patch skipped: {type(exc).__name__}: {exc}"})
+        return patch_flags
+    return {"dir_fallback": True, "nonstd_ifs_accept": True}
 
 
 def main(argv: list[str]) -> int:
@@ -373,9 +435,9 @@ def main(argv: list[str]) -> int:
         from conversion.conversion import convert_chart  # noqa: PLC0415
         from search_engine.search_engine import SearchEngine  # noqa: PLC0415
 
-        # 目录回退必须在转换之前装上：它包裹的是上游的谱面来源选择，
+        # 谱面来源与 IFS 载荷的放宽必须在转换之前装上：它包裹的是上游的谱面来源选择，
         # 而来源选择发生在 convert_chart 内部(与事后再补谱面的 p0 层不同)。
-        dir_fallback = apply_dir_fallback_patch()
+        chart_source_patch = apply_chart_source_patch()
 
         emit({"type": "progress", "percent": 0, "stage": "init"})
 
@@ -464,13 +526,15 @@ def main(argv: list[str]) -> int:
             # 因此改变条件重新转换时必须更新该值；
             # p0_patch 记录本次是否真的补进了补丁层谱面，
             # dir_fallback 记录本次是否装上了目录回退，
-            # 缺少这两个键的旧缓存一律视为过期
+            # nonstd_ifs_accept 记录本次是否接管了非标准 IFS，
+            # 缺少其中任何一个键的旧缓存一律视为过期
             "options": {
                 "include_stagefile": bool(include_stagefile),
                 "include_bga": bool(not args.no_bga),
                 "include_preview": bool(not args.no_preview),
                 "p0_patch": p0_patch,
-                "dir_fallback": dir_fallback,
+                "dir_fallback": chart_source_patch["dir_fallback"],
+                "nonstd_ifs_accept": chart_source_patch["nonstd_ifs_accept"],
             },
         }
 

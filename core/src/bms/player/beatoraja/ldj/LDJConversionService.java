@@ -330,13 +330,14 @@ public class LDJConversionService {
 		// 其中的谱面可能少了 SPL/DPL，一律视为过期；
 		// 这里只判断键是否存在，不判断补丁层文件是否存在，
 		// 否则降级转换（p0_patch=false）的缓存每次都会被判定为过期
-		// dir_fallback 同理：缺失说明该缓存是目录回退支持之前写入的
+		// dir_fallback、nonstd_ifs_accept 同理：缺失说明该缓存是各自支持之前写入的
 		JsonValue options = payload.get("options");
 		if (options == null
 				|| options.getBoolean("include_bga", true) != request.includeBga
 				|| options.getBoolean("include_preview", true) != request.includePreview
 				|| options.get("p0_patch") == null
-				|| options.get("dir_fallback") == null) {
+				|| options.get("dir_fallback") == null
+				|| options.get("nonstd_ifs_accept") == null) {
 			return null;
 		}
 		return parseResult(payload, request, cacheDir);
