@@ -11,6 +11,7 @@ import bms.model.*;
 import bms.player.beatoraja.*;
 import bms.player.beatoraja.audio.AudioDriver;
 import bms.player.beatoraja.input.BMSPlayerInputProcessor;
+import bms.player.beatoraja.modmenu.JudgeTrainer;
 import bms.player.beatoraja.play.JudgeProperty.MissCondition;
 import bms.player.beatoraja.play.JudgeProperty.NoteType;
 import bms.player.beatoraja.skin.SkinPropertyMapper;
@@ -199,6 +200,17 @@ public class JudgeManager {
         smjudge = rule.getJudge(NoteType.SCRATCH, judgerank, scratchJudgeWindowRate);
         scnendmjudge = rule.getJudge(NoteType.LONGSCRATCH_END, judgerank, scratchJudgeWindowRate);
         sreleasemargin = rule.longscratchMargin;
+
+        // IIDX-Like Type trainer: replace the scaled windows outright, since the judge rank
+        // percentage scaling above cannot express IIDX's window shape (it caps GOOD at 120ms
+        // and forces BAD to 200ms). Must run before mjudgestart/mjudgeend are derived below.
+        if (JudgeTrainer.isIidxLike()) {
+            nmjudge = JudgeTrainer.IIDX_NOTE;
+            smjudge = JudgeTrainer.IIDX_NOTE;
+            cnendmjudge = JudgeTrainer.IIDX_WINDOW;
+            scnendmjudge = JudgeTrainer.IIDX_WINDOW;
+        }
+
         mjudgestart = mjudgeend = 0;
         for (long[] l : nmjudge) {
             mjudgestart = Math.min(mjudgestart, l[0]);
