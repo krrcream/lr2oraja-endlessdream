@@ -326,10 +326,15 @@ public class LDJConversionService {
 			return null;
 		}
 		// stagefile 不影响谱面内容，因此从谱面缓存条件中排除
+		// p0_patch 缺失说明该缓存是补丁层支持之前写入的，
+		// 其中的谱面可能少了 SPL/DPL，一律视为过期；
+		// 这里只判断键是否存在，不判断补丁层文件是否存在，
+		// 否则降级转换（p0_patch=false）的缓存每次都会被判定为过期
 		JsonValue options = payload.get("options");
 		if (options == null
 				|| options.getBoolean("include_bga", true) != request.includeBga
-				|| options.getBoolean("include_preview", true) != request.includePreview) {
+				|| options.getBoolean("include_preview", true) != request.includePreview
+				|| options.get("p0_patch") == null) {
 			return null;
 		}
 		return parseResult(payload, request, cacheDir);

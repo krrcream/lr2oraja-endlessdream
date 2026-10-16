@@ -25,7 +25,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
+import tempfile
 import traceback
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -62,6 +64,12 @@ LEVEL_FIELDS = {
 # The same manifest that goes to stdout is also written into the result
 # directory, so a cached conversion can be reused without re-running Python.
 MANIFEST_FILE = "manifest.json"
+
+# 一部分歌曲把 SPL/DPL(LEGGENDARIA) 谱面藏在补丁层 <id>-p0.ifs 里。
+# 该文件是引用同目录 <id>.ifs 的 super-IFS，上游的谱面来源选择器（_find_chart_source）
+# 只认 <id>.ifs 或 <id>.1+<id>.s3p+<id>_pre.2dx 目录，完全不认补丁层，
+# 所以那一层从来没人读过，转换结果必然缺少 LEGGENDARIA 难度。
+P0_SUFFIX = "-p0.ifs"
 
 
 def emit(payload: dict) -> None:
@@ -121,6 +129,126 @@ def build_manifest(results_root: Path, result_dir: Path, result) -> list[dict]:
             }
         )
     return charts
+
+
+def find_p0_chart_file(extracted_root: Path, song_id_display: str) -> Path | None:
+    # 补丁层解包后谱面表仍叫 <id>.1，但恢复出来的目录层级由 ifstools 决定，
+    # 所以按文件名递归找，不假设深度。
+    for candidate in sorted(extracted_root.rglob(f"{song_id_display}.1")):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def apply_p0_patch(
+    project_root: Path,
+    sound_root: Path,
+    movie_root: Path,
+    result_dir: Path,
+    result,
+    include_bga: bool,
+) -> int:
+    """把补丁层 <id>-p0.ifs 里多出来的谱面补进 pass 1 的结果目录。
+
+    补丁层换掉了谱面表，音频与 _pre.2dx 却与基础层逐字节相同，
+    所以它多出来的 SPL/DPL(LEGGENDARIA) 谱面的 WAV 编号与 pass 1 抽出的
+    WAV 完全对应，直接复用 pass 1 的产物即可，不必再抽一遍音频。
+
+    只补空缺，不覆盖 pass 1 已经写出的同名谱面。返回补进去的谱面数量；
+    补丁层不存在、上游私有入口不可用、解包或 one2bme 失败都只发 warning
+    并返回 0，绝不能影响 pass 1 已经完成的转换。
+    """
+    song_id_display = str(result.song_id_display)
+    p0_file = sound_root / f"{song_id_display}{P0_SUFFIX}"
+    if not p0_file.is_file():
+        return 0
+
+    # 这些是上游的私有入口。上游若把它们重构掉，这里退化成 pass 1 的结果，
+    # 而不是让整次转换失败。
+    try:
+        from conversion.conversion import (  # noqa: PLC0415
+            _difficulty_for_bme_name,
+            _resolve_bga_with_extension,
+            _resolve_song_meta,
+            _rewrite_bme,
+            _run_one2bme,
+        )
+        from ifstools.ifs import IFS  # noqa: PLC0415
+    except ImportError as exc:
+        emit({"type": "warning", "message": f"p0 patch layer skipped: {type(exc).__name__}: {exc}"})
+        return 0
+
+    temp_root = Path(tempfile.mkdtemp(prefix="iidx2bms_p0_"))
+    try:
+        extracted_root = temp_root / "ifs"
+        # p0 是 super-IFS，它内部的引用相对自身所在目录解析，
+        # 因此必须留在 sound_root 原地解包，不能先拷到别处（拷走会解析失败）。
+        archive = IFS(str(p0_file))
+        try:
+            archive.extract(
+                path=str(extracted_root),
+                progress=False,
+                recurse=True,
+                extract_manifest=False,
+                rename_dupes=True,
+            )
+        finally:
+            archive.close()
+
+        one_file = find_p0_chart_file(extracted_root, song_id_display)
+        if one_file is None:
+            emit({"type": "warning", "message": f"p0 patch layer carries no {song_id_display}.1: {p0_file}"})
+            return 0
+
+        # one2bme 只读谱面表，不需要同层的音频文件。
+        work_dir = temp_root / "work"
+        work_dir.mkdir(parents=True, exist_ok=True)
+        bme_dir = _run_one2bme(project_root, work_dir, one_file)
+
+        # 以下取值逐条对齐上游 _copy_results，保证补丁层谱面写出的 tag
+        # 与 pass 1 的谱面完全一致。
+        song_meta = _resolve_song_meta(result, project_root)
+        genre_attr = getattr(result, "genre", None)
+        title_attr = getattr(result, "title", None)
+        artist_attr = getattr(result, "artist", None)
+        genre_value = str(song_meta.get("genre") or "").strip() if genre_attr is None else str(genre_attr).strip()
+        title_value = (
+            str(song_meta.get("title") or result.title_ascii or "").strip()
+            if title_attr is None
+            else str(title_attr).strip()
+        )
+        artist_value = str(song_meta.get("artist") or "").strip() if artist_attr is None else str(artist_attr).strip()
+        bmp01_value: str | None = None
+        if include_bga:
+            bmp01_value, _ = _resolve_bga_with_extension(
+                movie_root, str(song_meta.get("bga_filename") or "").strip()
+            )
+
+        # pass 1 可能因为缺 stagefile 退化成无 stagefile 重跑，那条路径上局部变量
+        # include_stagefile 仍是 True，所以这里以结果目录里的实际文件为准。
+        stagefile_name = "1.png" if (result_dir / "1.png").is_file() else None
+
+        injected = 0
+        for bme_file in sorted(bme_dir.glob("*.bme")):
+            normalized_name = bme_file.name.lstrip()
+            copied_bme = result_dir / normalized_name
+            if copied_bme.exists():
+                # pass 1 已经产出同名谱面，说明该难度来自基础层，保持原样。
+                continue
+            shutil.copy2(bme_file, copied_bme)
+            _rewrite_bme(
+                copied_bme,
+                difficulty=_difficulty_for_bme_name(normalized_name, result),
+                stagefile_name=stagefile_name,
+                genre_value=genre_value,
+                title_value=title_value,
+                artist_value=artist_value,
+                bmp01_value=bmp01_value,
+            )
+            injected += 1
+        return injected
+    finally:
+        shutil.rmtree(temp_root, ignore_errors=True)
 
 
 def main(argv: list[str]) -> int:
@@ -199,6 +327,26 @@ def main(argv: list[str]) -> int:
                 emit({"type": "warning", "message": f"stagefile unavailable, retrying without it: {message}"})
                 result_dir = run(False)
 
+        # 补丁层 <id>-p0.ifs 里可能还藏着基础层没有的 SPL/DPL 谱面。
+        # 这一步是可选的：它失败时只发 warning，pass 1 的结果照常返回。
+        p0_patch = False
+        with redirect_stdout(sys.stderr):
+            try:
+                p0_patch = (
+                    apply_p0_patch(
+                        project_root=project_root,
+                        sound_root=sound_root,
+                        movie_root=movie_root,
+                        result_dir=result_dir,
+                        result=result,
+                        include_bga=not args.no_bga,
+                    )
+                    > 0
+                )
+            except Exception as exc:  # noqa: BLE001 - 补丁层失败不影响基础转换
+                emit({"type": "warning", "message": f"p0 patch layer failed: {type(exc).__name__}: {exc}"})
+                p0_patch = False
+
         charts = build_manifest(results_root, result_dir, result)
         if not charts:
             emit({"type": "error", "message": f"conversion produced no .bme files in {result_dir}"})
@@ -217,11 +365,14 @@ def main(argv: list[str]) -> int:
                 "game_version": int(result.game_version),
             },
             # 转换条件，Java侧依据该值判定能否复用缓存，
-            # 因此改变条件重新转换时必须更新该值
+            # 因此改变条件重新转换时必须更新该值；
+            # p0_patch 记录本次是否真的补进了补丁层谱面，
+            # 缺少该键的旧缓存一律视为过期
             "options": {
                 "include_stagefile": bool(include_stagefile),
                 "include_bga": bool(not args.no_bga),
                 "include_preview": bool(not args.no_preview),
+                "p0_patch": p0_patch,
             },
         }
 
