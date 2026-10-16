@@ -301,6 +301,12 @@ public class BMSPlayer extends MainState {
 				model.setJudgerank(overridingJudgeWindowRate);
 			}
 
+			// Gauge Trainer 启用任一 IIDX 血条后完全不记录成绩（不是算作 assist clear，而是根本不保存）。
+			// 这里只能按「开关有没有打开」判定：本次实际生效的槽位要到下方 GaugeTrainer.apply 才确定。
+			if (GaugeTrainer.isActive()) {
+				score = false;
+			}
+
 			// Constant considered as assist in Endless Dream
 			// This is a community discussion result, see https://github.com/seraxis/lr2oraja-endlessdream/issues/42
 			if (config.getPlayConfig(model.getMode()).getPlayconfig().isEnableConstant()) {
