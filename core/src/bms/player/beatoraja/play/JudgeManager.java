@@ -201,7 +201,7 @@ public class JudgeManager {
         scnendmjudge = rule.getJudge(NoteType.LONGSCRATCH_END, judgerank, scratchJudgeWindowRate);
         sreleasemargin = rule.longscratchMargin;
 
-        // Trainer 的直接覆盖（IIDX-Like Type / Beatoraja Easy / Beatoraja Normal）：不只是换一套判定窗口的
+        // Trainer 的直接覆盖（IIDX-Like / Beatoraja Easy / Beatoraja Normal）：不只是换一套判定窗口的
         // 数值，还要绕开上面的百分比缩放——缩放无法表达这些选项的窗口形状（会把 GOOD 卡在 120ms、把 BAD
         // 固定成 200ms）。必须在下方推导 mjudgestart/mjudgeend 之前执行。
         long[][] directNote = JudgeTrainer.getDirectNoteWindow();
