@@ -2,6 +2,7 @@ package bms.player.beatoraja.select;
 
 import bms.player.beatoraja.select.bar.Bar;
 import bms.player.beatoraja.select.bar.FolderBar;
+import bms.player.beatoraja.select.bar.LDJTableSongBar;
 import bms.player.beatoraja.select.bar.SongBar;
 
 import java.util.Comparator;
@@ -101,6 +102,15 @@ public enum BarSorter {
 	LEVEL((o1, o2) -> {
 		if (!(o1 instanceof SongBar) || !(o2 instanceof SongBar)) {
 			return TITLE.sorter.compare(o1, o2);
+		}
+		// LDJ 难度表内的 LEVEL 排序改按表 json 的 difficultyValue 进行，皮肤显示的 LEVEL 不变。
+		// 表内同一个分组的子项都是 LDJTableSongBar，取值相同时继续按下面的 LEVEL 与难度比较。
+		if (o1 instanceof LDJTableSongBar && o2 instanceof LDJTableSongBar) {
+			final int difficultyValueSort = Float.compare(((LDJTableSongBar) o1).getDifficultyValue(),
+					((LDJTableSongBar) o2).getDifficultyValue());
+			if (difficultyValueSort != 0) {
+				return difficultyValueSort;
+			}
 		}
 		if (!((SongBar)o1).existsSong() && !((SongBar)o2).existsSong()) {
 			return 0;
