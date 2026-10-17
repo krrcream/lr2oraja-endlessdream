@@ -71,6 +71,17 @@ MANIFEST_FILE = "manifest.json"
 # 所以那一层从来没人读过，转换结果必然缺少 LEGGENDARIA 难度。
 P0_SUFFIX = "-p0.ifs"
 
+# 一部分歌曲的主音频被切成了多个容器：包内没有 <id>.2dx / <id>.s3p，
+# 只有 <id><后缀>.2dx(或 .s3p)。后缀按「无、1-9、a-z」升序拼接，
+# 同名 wav 后解出的覆盖先解出的，因此这一串必须按这个次序提取。
+_SPLIT_AUDIO_SUFFIX_ORDER: tuple[str, ...] = ("",) + tuple(
+    str(number) for number in range(1, 10)
+) + tuple(chr(code) for code in range(ord("a"), ord("z") + 1))
+
+# (work_dir 绝对路径, 首片文件名) -> 已复制进 work_dir 的有序分片清单。
+# 谱面准备层登记，提取层据此把各分片的输出合并到首片的 .out 目录。
+_SPLIT_AUDIO_REGISTRY: dict[tuple[str, str], list[Path]] = {}
+
 
 def emit(payload: dict) -> None:
     # The converter is wrapped in redirect_stdout(sys.stderr) so that its
@@ -251,15 +262,67 @@ def apply_p0_patch(
         shutil.rmtree(temp_root, ignore_errors=True)
 
 
+def _split_audio_parts(container_dir: Path, song_id_display: str) -> list[Path]:
+    """返回分片主音频的有序清单；存在完整主容器时返回空表。
+
+    上游把 <id>.2dx 与 <id>.s3p 当作完整主音频，所以只要其中任何一个在场就不接管；
+    否则依次试 .2dx、.s3p 两族，取先出现的一族。
+    <id>_pre.2dx 的「_pre」不在后缀集合里，预览音频不会被当成分片。
+    """
+    if (container_dir / f"{song_id_display}.2dx").is_file() or (
+        container_dir / f"{song_id_display}.s3p"
+    ).is_file():
+        return []
+    for extension in (".2dx", ".s3p"):
+        existing = [
+            candidate
+            for suffix in _SPLIT_AUDIO_SUFFIX_ORDER
+            if (candidate := container_dir / f"{song_id_display}{suffix}{extension}").is_file()
+        ]
+        if existing:
+            return existing
+    return []
+
+
+def _stage_split_audio(parts: list[Path], work_dir: Path) -> list[Path]:
+    """把分片按顺序复制进 work_dir，并登记这套分片供提取层合并。
+
+    上游总是先复制进 work_dir 再提取，所以副本的复制顺序必须与拼接顺序一致。
+    """
+    if not parts:
+        return []
+    copied: list[Path] = []
+    for part in parts:
+        destination = Path(work_dir) / part.name
+        shutil.copy2(part, destination)
+        copied.append(destination)
+    _SPLIT_AUDIO_REGISTRY[(Path(work_dir).resolve(), copied[0].name)] = copied
+    return copied
+
+
+def _registered_split_parts(work_dir: Path, archive_path: Path) -> list[Path]:
+    """取出登记过的分片清单；没登记过（普通歌）返回空表。"""
+    return _SPLIT_AUDIO_REGISTRY.get((Path(work_dir).resolve(), Path(archive_path).name), [])
+
+
+def _overlay_out_dir(source_dir: Path, target_dir: Path) -> None:
+    """把后一片解出的文件按同名覆盖写进首片的输出目录。"""
+    for source_file in sorted(Path(source_dir).glob("*")):
+        if source_file.is_file():
+            shutil.copy2(source_file, Path(target_dir) / source_file.name)
+
+
 def _dir_has_chart_payload(song_dir: Path, song_id_display: str) -> bool:
     """目录里是否有一份可当作 IFS 载荷用的谱面：谱面表加主音频。
 
-    上游 trio 判定要的是 <id>.s3p，而这里的目录主音频是 <id>.2dx，
-    所以两者都认；<id>_pre.2dx 由调用方另外判定。
+    上游 trio 判定要的是 <id>.s3p，而这里的目录主音频是 <id>.2dx，所以两者都认；
+    主音频被切成 <id>N.2dx 分片时也认，<id>_pre.2dx 由调用方另外判定。
     """
     if not (song_dir / f"{song_id_display}.1").is_file():
         return False
-    return (song_dir / f"{song_id_display}.2dx").is_file() or (song_dir / f"{song_id_display}.s3p").is_file()
+    if (song_dir / f"{song_id_display}.2dx").is_file() or (song_dir / f"{song_id_display}.s3p").is_file():
+        return True
+    return bool(_split_audio_parts(song_dir, song_id_display))
 
 
 def _chart_payload_from_extracted_dir(extracted_chart_dir: Path, song_id_display: str) -> dict[str, Path] | None:
@@ -267,18 +330,27 @@ def _chart_payload_from_extracted_dir(extracted_chart_dir: Path, song_id_display
 
     与上游的差别只有一条：不要求目录里的文件集与标准三件套完全相等。
     主音频(<id>.2dx 或 <id>.s3p)与 <id>_pre.2dx 都在场就够了，
-    多出来的文件(<id>a.2dx / <id>w.2dx 旁支容器、<id>N.2dx 分块等)一律忽略。
-    只有分块、没有 <id>.2dx 与 <id>.s3p 的包(13 首)在这里挑不出主音频，返回 None。
+    多出来的文件(<id>a.2dx / <id>w.2dx 旁支容器等)一律忽略。
+    没有主容器时退回分片族，把排在第一片的分片当作主音频；
+    <id>N.2dx 这类分片的合并由提取层完成。
     """
     one_file = extracted_chart_dir / f"{song_id_display}.1"
     audio_2dx_file = extracted_chart_dir / f"{song_id_display}.2dx"
     audio_s3p_file = extracted_chart_dir / f"{song_id_display}.s3p"
     preview_file = extracted_chart_dir / f"{song_id_display}_pre.2dx"
     # 两个容器同时在场的包(如 27100)取 .2dx，与上游自己的偏好一致
-    audio_file = audio_2dx_file if audio_2dx_file.is_file() else audio_s3p_file
-    if not one_file.is_file() or not audio_file.is_file() or not preview_file.is_file():
+    audio_file: Path | None = None
+    for candidate in (audio_2dx_file, audio_s3p_file):
+        if candidate.is_file():
+            audio_file = candidate
+            break
+    if audio_file is None:
+        parts = _split_audio_parts(extracted_chart_dir, song_id_display)
+        audio_file = parts[0] if parts else None
+    if not one_file.is_file() or audio_file is None or not preview_file.is_file():
         return None
     return {"one": one_file, "audio": audio_file, "preview": preview_file}
+
 
 
 def apply_chart_source_patch() -> dict[str, bool]:
@@ -305,15 +377,18 @@ def apply_chart_source_patch() -> dict[str, bool]:
         此时跳过 IFS 解包，从目录里取三件套。非标准包只接管原函数抛出的
         "is non-standard" 这一种失败(靠报错文本判断确实脆，但上游没给出别的信号)，
         此时上游已经把这个包解在 work_dir/<id>_ifs/<id>，直接复用那份文件，
-        省掉一次解包；仍然挑不出主音频的包(13 首分块音频)原样抛出上游的报错。
+        省掉一次解包。
         两条路径都复用 "ifs" 这个 kind：上游 "standard" 分支写死了
         _extract_wavs_from_s3p，而这里的主音频全是 .2dx，选错必失败。
-      * 这两种包都不保证音频完整(分块与旁支容器都不参与音源提取)，照发 warning。
+      * 分片合并(split_audio_merge)：没有 <id>.2dx / <id>.s3p 主容器、
+        只有 <id><后缀>.2dx(或 .s3p) 的歌，按「无、1-9、a-z」的次序把各片
+        依次解压，同名文件后者覆盖前者，最后只留首片的输出目录交给下游。
+      * 这两种包都不保证音频完整(旁支容器不参与音源提取)，照发 warning。
 
     返回补丁层的标志位，供 manifest 记录。上游若把这些私有入口重构掉，
     这里只发 warning 并返回全 False，转换退回上游原有行为，绝不因此失败。
     """
-    patch_flags = {"dir_fallback": False, "nonstd_ifs_accept": False}
+    patch_flags = {"dir_fallback": False, "nonstd_ifs_accept": False, "split_audio_merge": False}
     try:
         from conversion import conversion as conversion_module  # noqa: PLC0415
         from conversion.conversion import _copy_chart_files  # noqa: PLC0415
@@ -326,6 +401,18 @@ def apply_chart_source_patch() -> dict[str, bool]:
     if not callable(original_find_chart_source) or not callable(original_prepare_from_ifs):
         emit({"type": "warning", "message": "chart source patch skipped: upstream entry points are missing"})
         return patch_flags
+
+    original_extract_2dx = getattr(conversion_module, "_extract_wavs_from_2dx", None)
+    original_extract_s3p = getattr(conversion_module, "_extract_wavs_from_s3p", None)
+    split_ready = callable(original_extract_2dx) and callable(original_extract_s3p)
+    if not split_ready:
+        # 提取函数缺失时只放开前两类歌，分片合并整个禁用，退回「audio may be incomplete」的旧行为
+        emit(
+            {
+                "type": "warning",
+                "message": "split audio merge disabled: upstream extraction entry points are missing",
+            }
+        )
 
     def find_chart_source(sound_root: Path, song_id_display: str):
         try:
@@ -346,8 +433,10 @@ def apply_chart_source_patch() -> dict[str, bool]:
             audio_2dx_file = song_dir / f"{song_id_display}.2dx"
             audio_s3p_file = song_dir / f"{song_id_display}.s3p"
             preview_file = song_dir / f"{song_id_display}_pre.2dx"
+            # 主音频被切成分片时，排在第一片的那一份充当主音频，其余分片由提取层合并
+            parts = _split_audio_parts(song_dir, str(song_id_display)) if split_ready else []
             audio_file = audio_2dx_file if audio_2dx_file.is_file() else audio_s3p_file
-            if not one_file.is_file() or not audio_file.is_file():
+            if not one_file.is_file() or (not audio_file.is_file() and not parts):
                 raise RuntimeError(f"Chart source folder {song_dir} has no {song_id_display}.1 with audio")
             if not preview_file.is_file():
                 raise RuntimeError(f"Chart source folder {song_dir} has no {song_id_display}_pre.2dx")
@@ -361,6 +450,20 @@ def apply_chart_source_patch() -> dict[str, bool]:
                     ),
                 }
             )
+            if parts:
+                emit(
+                    {
+                        "type": "warning",
+                        "message": (
+                            f"Chart {song_id_display}: merging {len(parts)} audio fragments "
+                            f"in order {[part.name for part in parts]}"
+                        ),
+                    }
+                )
+                copied_parts = _stage_split_audio(parts, work_dir)
+                copied = _copy_chart_files({"one": one_file, "preview": preview_file}, work_dir)
+                copied["audio"] = copied_parts[0]
+                return copied
             return _copy_chart_files({"one": one_file, "audio": audio_file, "preview": preview_file}, work_dir)
 
         try:
@@ -377,32 +480,91 @@ def apply_chart_source_patch() -> dict[str, bool]:
         chart_dir = Path(work_dir) / f"{song_id_display}_ifs" / str(song_id_display)
         files = _chart_payload_from_extracted_dir(chart_dir, str(song_id_display)) if chart_dir.is_dir() else None
         if files is None:
-            # 主音频被切成 <id>N.2dx 分片的包(13 首)救不了，原样抛出上游的报错
+            # 既没有主音频、也没有可识别的分片族，原样抛出上游的报错
             raise original_error
 
-        selected_names = {item.name for item in files.values()}
+        # 没有 <id>.2dx / <id>.s3p 主容器时，_chart_payload_from_extracted_dir 取的是首片，
+        # 这里把整套分片登记下来，交给提取层按序合并
+        has_main_container = (
+            (chart_dir / f"{song_id_display}.2dx").is_file() or (chart_dir / f"{song_id_display}.s3p").is_file()
+        )
+        parts = [] if has_main_container or not split_ready else _split_audio_parts(chart_dir, str(song_id_display))
+        if parts:
+            selected_names = {files["one"].name, files["preview"].name} | {part.name for part in parts}
+        else:
+            selected_names = {item.name for item in files.values()}
         ignored = sorted(
             path.name for path in chart_dir.iterdir() if path.is_file() and path.name not in selected_names
         )
-        emit(
-            {
-                "type": "warning",
-                "message": (
-                    f"Chart {song_id_display}: {song_id_display}.ifs is non-standard, "
-                    f"ignoring {ignored} and using {files['audio'].name} as the main audio; "
-                    f"the audio may be incomplete"
-                ),
-            }
-        )
+        if parts:
+            message = (
+                f"Chart {song_id_display}: {song_id_display}.ifs is non-standard, "
+                f"merging {len(parts)} audio fragments in order {[part.name for part in parts]}, "
+                f"ignoring {ignored}"
+            )
+        else:
+            message = (
+                f"Chart {song_id_display}: {song_id_display}.ifs is non-standard, "
+                f"ignoring {ignored} and using {files['audio'].name} as the main audio; "
+                f"the audio may be incomplete"
+            )
+        emit({"type": "warning", "message": message})
+        if parts:
+            copied_parts = _stage_split_audio(parts, work_dir)
+            copied = _copy_chart_files({"one": files["one"], "preview": files["preview"]}, work_dir)
+            copied["audio"] = copied_parts[0]
+            return copied
         return _copy_chart_files(files, work_dir)
+
+    def extract_wavs_from_2dx(project_root: Path, work_dir: Path, archive_path: Path):
+        # 只有登记过的分片族才合并；普通歌原样走上游
+        parts = _registered_split_parts(work_dir, archive_path)
+        if not parts:
+            return original_extract_2dx(project_root, work_dir, archive_path)
+        # 后解出的分片按同名覆盖写进首片的输出目录，_copy_results 只会看这一个目录
+        base_out_dir = original_extract_2dx(project_root, work_dir, parts[0])
+        for part in parts[1:]:
+            _overlay_out_dir(original_extract_2dx(project_root, work_dir, part), base_out_dir)
+        return base_out_dir
+
+    def extract_wavs_from_s3p(
+        project_root: Path,
+        work_dir: Path,
+        archive_path: Path,
+        progress_callback=None,
+    ):
+        parts = _registered_split_parts(work_dir, archive_path)
+        if not parts:
+            return original_extract_s3p(project_root, work_dir, archive_path, progress_callback)
+
+        total_parts = len(parts)
+
+        def make_callback(index: int):
+            if progress_callback is None:
+                return None
+
+            def report(percent: int) -> None:
+                # 上游按单个容器报 0-100，这里折算成整套分片的整体进度
+                clamped = max(0, min(100, int(percent)))
+                progress_callback(int((index * 100 + clamped) / total_parts))
+
+            return report
+
+        base_out_dir = original_extract_s3p(project_root, work_dir, parts[0], make_callback(0))
+        for index, part in enumerate(parts[1:], start=1):
+            _overlay_out_dir(original_extract_s3p(project_root, work_dir, part, make_callback(index)), base_out_dir)
+        return base_out_dir
 
     try:
         conversion_module._find_chart_source = find_chart_source
         conversion_module._prepare_from_ifs = prepare_from_ifs
+        if split_ready:
+            conversion_module._extract_wavs_from_2dx = extract_wavs_from_2dx
+            conversion_module._extract_wavs_from_s3p = extract_wavs_from_s3p
     except Exception as exc:  # noqa: BLE001 - 装不上就退回上游行为
         emit({"type": "warning", "message": f"chart source patch skipped: {type(exc).__name__}: {exc}"})
         return patch_flags
-    return {"dir_fallback": True, "nonstd_ifs_accept": True}
+    return {"dir_fallback": True, "nonstd_ifs_accept": True, "split_audio_merge": split_ready}
 
 
 def main(argv: list[str]) -> int:
@@ -527,6 +689,7 @@ def main(argv: list[str]) -> int:
             # p0_patch 记录本次是否真的补进了补丁层谱面，
             # dir_fallback 记录本次是否装上了目录回退，
             # nonstd_ifs_accept 记录本次是否接管了非标准 IFS，
+            # split_audio_merge 记录本次是否装上了分片音频合并，
             # 缺少其中任何一个键的旧缓存一律视为过期
             "options": {
                 "include_stagefile": bool(include_stagefile),
@@ -535,6 +698,7 @@ def main(argv: list[str]) -> int:
                 "p0_patch": p0_patch,
                 "dir_fallback": chart_source_patch["dir_fallback"],
                 "nonstd_ifs_accept": chart_source_patch["nonstd_ifs_accept"],
+                "split_audio_merge": chart_source_patch["split_audio_merge"],
             },
         }
 
