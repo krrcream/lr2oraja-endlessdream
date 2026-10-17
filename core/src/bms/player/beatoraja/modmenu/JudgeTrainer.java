@@ -21,14 +21,15 @@ public class JudgeTrainer {
     public static final long[][] IIDX_WINDOW = new long[][]{
             {-16667, 16667}, {-33333, 33333}, {-116667, 116667}, {-250000, 250000}
     };
-    // 5 rows: note / long note press judging, index 4 is the excessive POOR window
-    // (kept as LR2's, since iidx.org does not state IIDX's exact value).
+    // 5 行：单键 / 长条按下判定，下标 4 是过度 POOR（空 POOR）窗口。
+    // iidx.org 没有给出 IIDX 的精确值，这里取 ±333 毫秒近似：早空 POOR 落在 (250 毫秒, 333 毫秒]，
+    // 250 毫秒及更早仍先命中 BAD；晚空 POOR 由同轨道对已消费音符的二次按键触发。
     public static final long[][] IIDX_NOTE = new long[][]{
-            IIDX_WINDOW[0], IIDX_WINDOW[1], IIDX_WINDOW[2], IIDX_WINDOW[3], {0, 1000000}
+            IIDX_WINDOW[0], IIDX_WINDOW[1], IIDX_WINDOW[2], IIDX_WINDOW[3], {-333000, 333000}
     };
 
     // Beatoraja 的 EASY / NORMAL 判定窗口，单位微秒，顺序为 PGREAT、GREAT、GOOD、BAD。
-    // BAD 早晚不对称，所以每行都写成 {早, 晚}。
+    // BAD 早晚不对称，所以每行都写成 {晚, 早}。
     // 只保留 4 行：长条松手判定要求正好 4 行（LR2 也是这个行数）。
     public static final long[][] BEATORAJA_EASY_WINDOW = new long[][]{
             {-20000, 20000}, {-60000, 60000}, {-150000, 150000}, {-280000, 220000}
