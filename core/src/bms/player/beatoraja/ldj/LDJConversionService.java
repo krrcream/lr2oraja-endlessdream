@@ -413,24 +413,12 @@ public class LDJConversionService {
 	 * 判断直读缓存附带的音频索引是否可用。
 	 *
 	 * <p>契约要求先写完索引再写清单，正常生成的缓存不会缺少索引；
-	 * 这里仍检查文件存在与 index_version，防止索引被删除或改动后继续使用。
-	 * 读取失败一律当作没有索引，交给上层按缓存未命中重转。</p>
+	 * 这里委托 {@link LDJAudioIndexLoader} 完整解析，防止索引被删除、
+	 * 损坏或版本改动后继续使用。读取失败一律当作没有索引，
+	 * 交给上层按缓存未命中重转。</p>
 	 */
 	private static boolean hasValidAudioIndex(Path cacheDir) {
-		Path index = cacheDir.resolve(AUDIO_INDEX_FILE);
-		if (!Files.isRegularFile(index)) {
-			return false;
-		}
-		try {
-			JsonValue payload = new JsonReader().parse(new String(Files.readAllBytes(index), StandardCharsets.UTF_8));
-			return payload.getInt("index_version", -1) == AUDIO_INDEX_VERSION;
-		} catch (IOException e) {
-			logger.warn("iidx2bms: failed to read the cached audio index {}", index, e);
-			return false;
-		} catch (RuntimeException e) {
-			logger.warn("iidx2bms: the cached audio index {} is not valid JSON", index);
-			return false;
-		}
+		return LDJAudioIndexLoader.load(cacheDir) != null;
 	}
 
 	private Result parseResult(JsonValue message, Request request) throws ConversionException {
