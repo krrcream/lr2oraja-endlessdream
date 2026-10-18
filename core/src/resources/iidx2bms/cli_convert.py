@@ -82,6 +82,239 @@ _SPLIT_AUDIO_SUFFIX_ORDER: tuple[str, ...] = ("",) + tuple(
 # 谱面准备层登记，提取层据此把各分片的输出合并到首片的 .out 目录。
 _SPLIT_AUDIO_REGISTRY: dict[tuple[str, str], list[Path]] = {}
 
+# 直读索引的文件名与结构版本，必须与 Java 侧 LDJConversionService 的常量一致。
+AUDIO_INDEX_FILE = "ldj_audio.json"
+AUDIO_INDEX_VERSION = 1
+AUDIO_MODE_DIRECT = "direct"
+AUDIO_MODE_EXTRACT = "extract"
+
+# 当前生效的音频模式。apply_chart_source_patch 里的包装函数在每次调用时读取它，
+# 因此索引生成失败后可以在同一进程内切回 extract 并重跑转换。
+_AUDIO_MODE_ACTIVE = AUDIO_MODE_EXTRACT
+
+# (work_dir 绝对路径, 音频文件名) 集合：direct 模式下这些容器不需要解压。
+_DIRECT_AUDIO_SUPPRESSION: set[tuple[str, str]] = set()
+
+
+def _scan_2dx_sections(data: bytes) -> list[tuple[str, int, int]]:
+    """按 2dx_parse.c 的规则扫描一个 2DX 载荷，返回 (文件名, 段内偏移, 字节数)。
+
+    魔数为 "2DX9"，段长在 +0x8（u32 LE），载荷起点在 +0x18；
+    声明键音数在 0x14（u16 LE），只用来决定文件名宽度。
+    越界时与 C 实现一样停止，不抛异常。
+    """
+    limit = len(data)
+    if limit < 0x16:
+        return []
+    declared = data[0x14] | (data[0x15] << 8)
+    digits = max(4, len(str(declared)) if declared else 1)
+    sections: list[tuple[str, int, int]] = []
+    position = 0
+    count = 0
+    while count < declared:
+        position = data.find(b"2DX9", position)
+        if position < 0 or position + 0x18 >= limit:
+            break
+        size = int.from_bytes(data[position + 0x8 : position + 0xC], "little")
+        payload = position + 0x18
+        if payload + size > limit:
+            break
+        sections.append((f"{count + 1:0{digits}d}.wav", payload, size))
+        count += 1
+        position = payload + size
+    return sections
+
+
+def _split_audio_entry_names(names: set[str], song_id_display: str) -> list[str]:
+    """在容器文件名集合里按与 _split_audio_parts 相同的规则挑出分片链。"""
+    if f"{song_id_display}.2dx" in names or f"{song_id_display}.s3p" in names:
+        return []
+    for extension in (".2dx", ".s3p"):
+        existing = [
+            candidate
+            for suffix in _SPLIT_AUDIO_SUFFIX_ORDER
+            if (candidate := f"{song_id_display}{suffix}{extension}") in names
+        ]
+        if existing:
+            return existing
+    return []
+
+
+def _relative_audio_path(path: Path, sound_root: Path) -> str:
+    """容器路径一律相对 LDJ 音频根，使用正斜杠，缓存目录搬家后仍然有效。"""
+    try:
+        return Path(path).resolve().relative_to(Path(sound_root).resolve()).as_posix()
+    except ValueError as exc:
+        raise RuntimeError(f"audio container is outside the sound root: {path}") from exc
+
+
+def _ifs_entry_table(ifs_file: Path) -> tuple[int, dict[str, tuple[int, int, bool]]]:
+    """读取 IFS 清单，返回 (manifest_end, 文件名 -> (start, size, 是否属于本文件))。
+
+    复用 ifstools 的解析结果，不调用任何外部提取器。
+    """
+    from ifstools.ifs import IFS  # noqa: PLC0415
+
+    archive = IFS(str(ifs_file))
+    try:
+        base_blob = archive.data_blob
+        manifest_end = int(base_blob.offset)
+        entries: dict[str, tuple[int, int, bool]] = {}
+
+        def walk(folder) -> None:
+            for node in folder.files.values():
+                if node.start is None or node.size is None:
+                    continue
+                entries.setdefault(
+                    node.name,
+                    (int(node.start), int(node.size), node.ifs_data is base_blob),
+                )
+            for child in folder.folders.values():
+                walk(child)
+
+        walk(archive.tree)
+        return manifest_end, entries
+    finally:
+        archive.close()
+
+
+def _direct_audio_from_directory(
+    sound_root: Path, song_dir: Path, song_id_display: str
+) -> list[tuple[str, int, list[tuple[str, int, int]]]]:
+    """解包目录的主音频：返回 (容器相对路径, 容器基址, 段表) 清单。"""
+    main_2dx = song_dir / f"{song_id_display}.2dx"
+    if main_2dx.is_file():
+        parts = [main_2dx]
+    else:
+        if (song_dir / f"{song_id_display}.s3p").is_file():
+            raise RuntimeError(".s3p audio is not supported by direct read")
+        parts = _split_audio_parts(song_dir, song_id_display)
+        if not parts:
+            raise RuntimeError("no .2dx main audio or split parts found")
+    if any(part.suffix.lower() != ".2dx" for part in parts):
+        raise RuntimeError("direct read only supports .2dx audio containers")
+    return [
+        (_relative_audio_path(part, sound_root), 0, _scan_2dx_sections(part.read_bytes()))
+        for part in parts
+    ]
+
+
+def _direct_audio_from_ifs(
+    sound_root: Path, ifs_file: Path, song_id_display: str
+) -> list[tuple[str, int, list[tuple[str, int, int]]]]:
+    """IFS 内的主音频：绝对偏移为 manifest_end + entry.start + 段内偏移。"""
+    manifest_end, entries = _ifs_entry_table(ifs_file)
+    names = set(entries)
+    if f"{song_id_display}.2dx" in names:
+        parts = [f"{song_id_display}.2dx"]
+    elif f"{song_id_display}.s3p" in names:
+        raise RuntimeError(".s3p audio is not supported by direct read")
+    else:
+        parts = _split_audio_entry_names(names, song_id_display)
+    if not parts:
+        raise RuntimeError("no .2dx main audio or split parts found in the IFS")
+    if any(not name.lower().endswith(".2dx") for name in parts):
+        raise RuntimeError("direct read only supports .2dx audio containers")
+
+    relative_path = _relative_audio_path(ifs_file, sound_root)
+    descriptors: list[tuple[str, int, list[tuple[str, int, int]]]] = []
+    with Path(ifs_file).open("rb") as handle:
+        for name in parts:
+            start, size, owned = entries[name]
+            if not owned:
+                # 该条目来自被引用的 super-IFS，偏移不属于当前文件，无法直读
+                raise RuntimeError(f"audio container {name} is stored in a referenced super-IFS")
+            handle.seek(manifest_end + start)
+            data = handle.read(size)
+            if len(data) != size:
+                raise RuntimeError(f"short read from {Path(ifs_file).name}:{start}")
+            descriptors.append(
+                (relative_path, manifest_end + start, _scan_2dx_sections(data))
+            )
+    return descriptors
+
+
+def build_direct_audio_index(
+    sound_root: Path,
+    source_kind: str,
+    source_files: dict[str, Path],
+    song_id_display: str,
+) -> dict:
+    """扫描谱面来源里的主音频容器，生成直读索引。
+
+    不支持的来源（standard/.s3p、未知容器、扫描不到任何段）一律抛异常，
+    由调用方在同一进程内回退到 extract。
+    """
+    song_id_display = str(song_id_display)
+    if source_kind != "ifs":
+        raise RuntimeError(f"direct audio read does not support chart source kind {source_kind!r}")
+    source = Path(source_files["ifs"])
+    if source.is_dir():
+        descriptors = _direct_audio_from_directory(sound_root, source, song_id_display)
+    elif source.suffix.lower() == ".ifs":
+        descriptors = _direct_audio_from_ifs(sound_root, source, song_id_display)
+    else:
+        raise RuntimeError(f"direct audio read does not support chart source {source.name}")
+
+    containers: list[dict] = []
+    container_index: dict[str, int] = {}
+    wav: dict[str, list[int]] = {}
+    for path, base_offset, sections in descriptors:
+        index = container_index.get(path)
+        if index is None:
+            index = len(containers)
+            container_index[path] = index
+            containers.append({"path": path})
+        for name, payload_offset, size in sections:
+            # 分片按顺序扫描，同名条目后来者覆盖先来者
+            wav[name] = [index, base_offset + payload_offset, size]
+    if not wav:
+        raise RuntimeError("no 2DX sections found in the main audio container")
+    return {
+        "index_version": AUDIO_INDEX_VERSION,
+        "audio_mode": AUDIO_MODE_DIRECT,
+        "song_id": song_id_display,
+        "containers": containers,
+        "wav": wav,
+    }
+
+
+def write_direct_audio_index(result_dir: Path, payload: dict) -> None:
+    """先写同目录临时文件再原子重命名，保证清单声明 direct 时索引一定完整可见。"""
+    target = Path(result_dir) / AUDIO_INDEX_FILE
+    temporary = target.with_name(f".{AUDIO_INDEX_FILE}.tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
+    temporary.replace(target)
+
+
+def _register_direct_audio(
+    work_dir: Path, copied: dict[str, Path], parts: list[Path]
+) -> None:
+    """登记 direct 模式下不需要解压的主音频（含全部分片）。"""
+    if _AUDIO_MODE_ACTIVE != AUDIO_MODE_DIRECT:
+        return
+    audio_file = Path(copied["audio"])
+    if audio_file.suffix.lower() != ".2dx":
+        return
+    work_key = str(Path(work_dir).resolve())
+    _DIRECT_AUDIO_SUPPRESSION.add((work_key, audio_file.name))
+    for part in parts:
+        _DIRECT_AUDIO_SUPPRESSION.add((work_key, Path(part).name))
+
+
+def _direct_audio_suppressed(work_dir: Path, archive_path: Path) -> bool:
+    return (str(Path(work_dir).resolve()), Path(archive_path).name) in _DIRECT_AUDIO_SUPPRESSION
+
+
+def _empty_audio_out_dir(work_dir: Path, archive_path: Path) -> Path:
+    """direct 模式不落盘主音频，只返回一个空输出目录供 _copy_results 使用。"""
+    out_dir = Path(work_dir) / f"{Path(archive_path).name}.out"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for stale_file in out_dir.glob("*"):
+        if stale_file.is_file():
+            stale_file.unlink(missing_ok=True)
+    return out_dir
+
 
 def emit(payload: dict) -> None:
     # The converter is wrapped in redirect_stdout(sys.stderr) so that its
@@ -111,6 +344,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--no-bga", action="store_true", help="do not copy BGA / #BMP rewrite")
     parser.add_argument("--no-preview", action="store_true", help="do not extract the preview .2dx")
     parser.add_argument("--overwrite", action="store_true", help="remove an existing result folder of the same song first")
+    parser.add_argument(
+        "--audio-mode",
+        choices=(AUDIO_MODE_DIRECT, AUDIO_MODE_EXTRACT),
+        default=AUDIO_MODE_EXTRACT,
+        help="direct skips extracting the main audio and writes a direct-read index; extract keeps the old behaviour",
+    )
     return parser.parse_args(argv)
 
 
@@ -463,17 +702,25 @@ def apply_chart_source_patch() -> dict[str, bool]:
                 copied_parts = _stage_split_audio(parts, work_dir)
                 copied = _copy_chart_files({"one": one_file, "preview": preview_file}, work_dir)
                 copied["audio"] = copied_parts[0]
+                _register_direct_audio(work_dir, copied, parts)
                 return copied
-            return _copy_chart_files({"one": one_file, "audio": audio_file, "preview": preview_file}, work_dir)
+            copied = _copy_chart_files(
+                {"one": one_file, "audio": audio_file, "preview": preview_file}, work_dir
+            )
+            _register_direct_audio(work_dir, copied, [])
+            return copied
 
         try:
-            return original_prepare_from_ifs(project_root, work_dir, song_id_display, ifs_file)
+            copied = original_prepare_from_ifs(project_root, work_dir, song_id_display, ifs_file)
         except RuntimeError as exc:
             # 只接管文件集「非标准」这一种失败；解不开包、缺 <id>_pre.2dx 等
             # 其他失败原样抛回，报错文本不变
             if "is non-standard" not in str(exc):
                 raise
             original_error = exc
+        else:
+            _register_direct_audio(work_dir, copied, [])
+            return copied
 
         # 上游已经把这个包解在 work_dir/<id>_ifs/<id> 下；这里直接接着用它，
         # 顺带也说明为什么找不到这个目录时要退回上游原来的报错
@@ -513,10 +760,16 @@ def apply_chart_source_patch() -> dict[str, bool]:
             copied_parts = _stage_split_audio(parts, work_dir)
             copied = _copy_chart_files({"one": files["one"], "preview": files["preview"]}, work_dir)
             copied["audio"] = copied_parts[0]
+            _register_direct_audio(work_dir, copied, parts)
             return copied
-        return _copy_chart_files(files, work_dir)
+        copied = _copy_chart_files(files, work_dir)
+        _register_direct_audio(work_dir, copied, [])
+        return copied
 
     def extract_wavs_from_2dx(project_root: Path, work_dir: Path, archive_path: Path):
+        # direct 模式的主音频（含全部分片）不落盘，交给 Java 侧按索引直读
+        if _AUDIO_MODE_ACTIVE == AUDIO_MODE_DIRECT and _direct_audio_suppressed(work_dir, archive_path):
+            return _empty_audio_out_dir(work_dir, archive_path)
         # 只有登记过的分片族才合并；普通歌原样走上游
         parts = _registered_split_parts(work_dir, archive_path)
         if not parts:
@@ -568,6 +821,7 @@ def apply_chart_source_patch() -> dict[str, bool]:
 
 
 def main(argv: list[str]) -> int:
+    global _AUDIO_MODE_ACTIVE
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
@@ -615,6 +869,39 @@ def main(argv: list[str]) -> int:
 
         emit({"type": "progress", "percent": 1, "stage": "search"})
 
+        # direct 模式先在不启动转换的前提下定位谱面来源并扫描主音频容器。
+        # 任何不支持或扫描失败都在这里退回 extract，转换本身照常进行。
+        audio_mode = args.audio_mode
+        audio_index: dict | None = None
+        if audio_mode == AUDIO_MODE_DIRECT:
+            try:
+                from conversion import conversion as conversion_module  # noqa: PLC0415
+
+                source_kind, source_files = conversion_module._find_chart_source(
+                    sound_root, str(result.song_id_display)
+                )
+                audio_index = build_direct_audio_index(
+                    sound_root=sound_root,
+                    source_kind=source_kind,
+                    source_files=source_files,
+                    song_id_display=str(result.song_id_display),
+                )
+            except Exception as exc:  # noqa: BLE001 - 索引失败只回退，不影响整曲转换
+                emit(
+                    {
+                        "type": "warning",
+                        "message": (
+                            "direct audio index unavailable, falling back to extract: "
+                            f"{type(exc).__name__}: {exc}"
+                        ),
+                    }
+                )
+                audio_index = None
+                audio_mode = AUDIO_MODE_EXTRACT
+
+        _AUDIO_MODE_ACTIVE = audio_mode
+        _DIRECT_AUDIO_SUPPRESSION.clear()
+
         include_stagefile = not args.no_stagefile
 
         def run(stagefile: bool) -> Path:
@@ -649,23 +936,51 @@ def main(argv: list[str]) -> int:
 
         # 补丁层 <id>-p0.ifs 里可能还藏着基础层没有的 SPL/DPL 谱面。
         # 这一步是可选的：它失败时只发 warning，pass 1 的结果照常返回。
-        p0_patch = False
-        with redirect_stdout(sys.stderr):
-            try:
-                p0_patch = (
-                    apply_p0_patch(
-                        project_root=project_root,
-                        sound_root=sound_root,
-                        movie_root=movie_root,
-                        result_dir=result_dir,
-                        result=result,
-                        include_bga=not args.no_bga,
+        def run_p0() -> bool:
+            with redirect_stdout(sys.stderr):
+                try:
+                    return (
+                        apply_p0_patch(
+                            project_root=project_root,
+                            sound_root=sound_root,
+                            movie_root=movie_root,
+                            result_dir=result_dir,
+                            result=result,
+                            include_bga=not args.no_bga,
+                        )
+                        > 0
                     )
-                    > 0
+                except Exception as exc:  # noqa: BLE001 - 补丁层失败不影响基础转换
+                    emit({"type": "warning", "message": f"p0 patch layer failed: {type(exc).__name__}: {exc}"})
+                    return False
+
+        p0_patch = run_p0()
+
+        # 索引必须先于清单落盘；写索引失败时切回 extract 并重跑，
+        # 保证清单声明的模式与实际产物一致。
+        if audio_mode == AUDIO_MODE_DIRECT and audio_index is not None:
+            try:
+                write_direct_audio_index(result_dir, audio_index)
+            except OSError as exc:
+                emit(
+                    {
+                        "type": "warning",
+                        "message": f"could not write {AUDIO_INDEX_FILE}, falling back to extract: {exc}",
+                    }
                 )
-            except Exception as exc:  # noqa: BLE001 - 补丁层失败不影响基础转换
-                emit({"type": "warning", "message": f"p0 patch layer failed: {type(exc).__name__}: {exc}"})
-                p0_patch = False
+                audio_mode = AUDIO_MODE_EXTRACT
+                audio_index = None
+                _AUDIO_MODE_ACTIVE = AUDIO_MODE_EXTRACT
+                _DIRECT_AUDIO_SUPPRESSION.clear()
+                with redirect_stdout(sys.stderr):
+                    result_dir = run(include_stagefile)
+                p0_patch = run_p0() or p0_patch
+        else:
+            # extract 模式不应留下索引，避免缓存目录里出现与清单不符的旧文件
+            try:
+                (result_dir / AUDIO_INDEX_FILE).unlink(missing_ok=True)
+            except OSError:
+                pass
 
         charts = build_manifest(results_root, result_dir, result)
         if not charts:
@@ -690,7 +1005,8 @@ def main(argv: list[str]) -> int:
             # dir_fallback 记录本次是否装上了目录回退，
             # nonstd_ifs_accept 记录本次是否接管了非标准 IFS，
             # split_audio_merge 记录本次是否装上了分片音频合并，
-            # 缺少其中任何一个键的旧缓存一律视为过期
+            # audio_mode 记录最终实际生效的音频模式（索引失败会回退为 extract），
+            # index_version 是索引结构版本，缺少其中任何一个键的旧缓存一律视为过期
             "options": {
                 "include_stagefile": bool(include_stagefile),
                 "include_bga": bool(not args.no_bga),
@@ -699,6 +1015,8 @@ def main(argv: list[str]) -> int:
                 "dir_fallback": chart_source_patch["dir_fallback"],
                 "nonstd_ifs_accept": chart_source_patch["nonstd_ifs_accept"],
                 "split_audio_merge": chart_source_patch["split_audio_merge"],
+                "audio_mode": audio_mode,
+                "index_version": AUDIO_INDEX_VERSION,
             },
         }
 
