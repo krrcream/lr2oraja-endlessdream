@@ -23,8 +23,9 @@ This repository is a personal custom build of [LR2oraja ~Endless Dream~](https:/
 
 ### LDJ In-Game Song List
 
-This feature uses the standalone tool [iidx2bms (personal fork)](https://github.com/krrcream/iidx2bms) (the `orajaroot` branch) as its format conversion backend, whose upstream project is [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms). It converts the corresponding chart format the user already has locally in real time, and integrates the result into the in-game song select screen for direct browsing and playing.
+This feature uses the standalone tool [iidx2bms (personal fork)](https://github.com/krrcream/iidx2bms) as its format conversion backend, whose upstream project is [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms). It converts the corresponding chart format the user already has locally in real time, and integrates the result into the in-game song select screen for direct browsing and playing.
 
+Corresponds to two iidx2bms branches: `orajaroot` is the standard version (writes audio intermediate products during conversion); `orajaroot-plus` is the no-audio-intermediate-product version.
 - A separate `LDJ` category folder in the song select screen
 - Support for custom difficulty tables (Tables), which can be imported as external table files
 - Format conversion starts automatically the first time a chart is selected; once it finishes you can play normally
@@ -52,10 +53,9 @@ Merged the [Endless Dream branch maintained by zkldi with backbeat support](http
 
 ### Prerequisites
 
-1. Have a working base beatoraja 0.8.8 installation. Rename the jar built from this branch to `beatoraja.jar` and replace the original file with it.
+1. Have a working base beatoraja 0.8.8 installation.
    - If there is no `config_sys.json` in the directory, launch the game once and close it to generate the file.
-2. Separately clone the `orajaroot` branch of [iidx2bms](https://github.com/krrcream/iidx2bms) into any directory, and make sure it contains `conversion/conversion.py` and `music_data/music_data.json`.
-
+2. Separately clone [iidx2bms](https://github.com/krrcream/iidx2bms) into any directory, and make sure it contains `conversion/conversion.py` and `music_data/music_data.json`. The standard version uses the `orajaroot` branch, and the no-audio-intermediate-product version uses the `orajaroot-plus` branch.
 ### Configuration Options
 
 Edit `config_sys.json` in the game directory and add the following options:
@@ -88,7 +88,7 @@ Edit `config_sys.json` in the game directory and add the following options:
 
 #### Prerequisites
 
-- `LDJ_ToolPath` in `config_sys.json` must point correctly to the root of the iidx2bms `orajaroot` branch, and that directory must contain `music_data/music_data.json`; without that file the whole LDJ category is not shown.
+- `LDJ_ToolPath` in `config_sys.json` must point correctly to the root of the iidx2bms branch (standard version `orajaroot`, no-audio-intermediate-product version `orajaroot-plus`), and that directory must contain `music_data/music_data.json`; without that file the whole LDJ category is not shown.
 - Charts in a difficulty table must be matchable in `music_data.json`; entries that fail to match are silently ignored.
 
 #### Location
