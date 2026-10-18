@@ -634,7 +634,7 @@ public abstract class AbstractAudioDriver<T> implements AudioDriver {
 				if (wav == null) {
 					if (key.directContainer != null) {
 						try {
-							wav = PCM.loadWav(new LDJAudioSliceInputStream(key.directContainer, key.directOffset, key.directSize),
+							wav = PCM.loadDirect(new LDJAudioSliceInputStream(key.directContainer, key.directOffset, key.directSize),
 									key.directName, AbstractAudioDriver.this);
 						} catch (IOException e) {
 							logger.warn("iidx2bms: 直读容器打开失败：{}", key.directContainer, e);

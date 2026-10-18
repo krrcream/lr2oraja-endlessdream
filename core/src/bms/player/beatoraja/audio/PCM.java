@@ -3,10 +3,15 @@ package bms.player.beatoraja.audio;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.ffmpeg.global.avutil;
 
 import org.jflac.FLACDecoder;
 import org.jflac.metadata.StreamInfo;
@@ -146,6 +151,75 @@ public abstract class PCM<T> {
 		}
 
 		return null;
+	}
+
+	/**
+	 * LDJ 直读专用：从流解析 WMA（完整 ASF 文件）键音并生成 PCM。
+	 *
+	 * <p>与 {@link #loadWav(InputStream, String, AudioDriver)} 结构一致，区别是
+	 * 用内嵌 FFmpeg 解码 WMA 而非解析 WAV。name 仅用于报错信息。</p>
+	 */
+	public static PCM loadWma(InputStream in, String name, AudioDriver driver) {
+		try {
+			PCMLoader loader = new PCMLoader(driver);
+			loader.loadPCMWma(in, name);
+
+			PCM pcm = null;
+			if(loader.bitsPerSample > 16) {
+				pcm = FloatPCM.loadPCM(loader);
+			} else if(loader.bitsPerSample == 16) {
+				if(loader.pcm.isDirect()) {
+					pcm = ShortDirectPCM.loadPCM(loader);
+				} else {
+					pcm = ShortPCM.loadPCM(loader);
+				}
+			} else {
+				pcm = ShortPCM.loadPCM(loader);
+			}
+
+			if(pcm != null && ((AbstractAudioDriver)driver).channels != 0 && pcm.channels != ((AbstractAudioDriver)driver).channels) {
+				pcm = pcm.changeChannels(((AbstractAudioDriver)driver).channels);
+			}
+			if(pcm != null && ((AbstractAudioDriver)driver).getSampleRate() != 0 && pcm.sampleRate != ((AbstractAudioDriver)driver).getSampleRate()) {
+				pcm = pcm.changeSampleRate(((AbstractAudioDriver)driver).getSampleRate());
+			}
+
+			if(pcm.validate()) {
+				return pcm;
+			} else {
+				logger.warn("音源の読み込みに失敗しました - file : {}", name);
+				return null;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
+
+	/**
+	 * LDJ 直读专用：按切片魔数分派 WAV 或 WMA 解码。
+	 *
+	 * <p>2dx 切片的载荷是 WAV（开头为 "RIFF"），s3p 切片的载荷是完整 ASF 文件
+	 * （开头的 ASF Header GUID 为 30 26 b2 75），据此选择解码器。</p>
+	 */
+	public static PCM loadDirect(InputStream in, String name, AudioDriver driver) {
+		BufferedInputStream buffered = new BufferedInputStream(in, 8192);
+		boolean wma = false;
+		try {
+			buffered.mark(4);
+			wma = buffered.read() == 0x30
+					&& buffered.read() == 0x26
+					&& buffered.read() == 0xb2
+					&& buffered.read() == 0x75;
+			buffered.reset();
+		} catch (IOException e) {
+			try {
+				buffered.reset();
+			} catch (IOException ignored) {
+			}
+		}
+		return wma ? loadWma(buffered, name, driver) : loadWav(buffered, name, driver);
 	}
 
 	public static PCM load(String name, AudioDriver driver) {
@@ -538,8 +612,87 @@ public abstract class PCM<T> {
 			}
 			pcm.limit(bytes);
 		}
+
+		/**
+		 * LDJ 直读专用：用内嵌 FFmpeg 把内存里的 WMA（完整 ASF 文件）字节流解码成 PCM。
+		 *
+		 * <p>s3p 容器里的每个键音都是一份完整 ASF 文件，这里复用游戏已打包的 JavaCV FFmpeg
+		 * 解复用 ASF + 解码 WMA，输出交错 S16 小端 PCM。name 仅用于报错信息。</p>
+		 */
+		public void loadPCMWma(InputStream in, String name) throws IOException {
+			pcm = null;
+
+			try {
+				FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(in);
+				try {
+					grabber.setSampleFormat(avutil.AV_SAMPLE_FMT_S16);
+					grabber.start();
+					channels = grabber.getAudioChannels();
+					sampleRate = grabber.getSampleRate();
+					bitsPerSample = 16;
+
+					OptimizedByteArrayOutputStream output = new OptimizedByteArrayOutputStream(1 << 16);
+					Frame frame;
+					while ((frame = grabber.grabSamples()) != null) {
+						if (frame.samples == null || frame.samples.length == 0) {
+							continue;
+						}
+						ShortBuffer samples = (ShortBuffer) frame.samples[0];
+						int remaining = samples.remaining();
+						byte[] littleEndian = new byte[remaining * 2];
+						for (int i = 0; i < remaining; i++) {
+							short value = samples.get();
+							littleEndian[i * 2] = (byte) value;
+							littleEndian[i * 2 + 1] = (byte) (value >> 8);
+						}
+						output.write(littleEndian, 0, littleEndian.length);
+					}
+					byte[] bytes = output.toByteArray();
+					pcm = getDirectByteBuffer(bytes.length).put(bytes);
+				} finally {
+					try {
+						grabber.stop();
+					} catch (Throwable ignored) {
+					}
+					try {
+						grabber.close();
+					} catch (Throwable ignored) {
+					}
+				}
+			} catch (Throwable e) {
+				logger.warn("WMA処理中の例外 - file : {} error : {}", name, e.toString());
+			}
+
+			if(pcm == null) {
+				throw new IOException(name + " : can't convert to PCM");
+			}
+			if(channels <= 0) {
+				throw new IOException(name + " : 0 channels");
+			}
+
+			int bytes = pcm.limit();
+			bytes -= bytes % (channels > 1 ? bitsPerSample / 4 : bitsPerSample / 8);
+			while(bytes > channels * bitsPerSample / 8) {
+				boolean zero = true;
+				for(int i = 0;i < channels * bitsPerSample / 8;i++){
+					zero &= (pcm.get(bytes - i - 1) == 0x00);
+				}
+				if(zero) {
+					bytes -= channels * bitsPerSample / 8;
+				} else {
+					break;
+				}
+			}
+			if(bytes < channels * bitsPerSample / 8) {
+				throw new IOException(name + " : 0 samples");
+			}
+			if(sampleRate == 0) {
+				throw new IOException(name + " : 0 sample rate");
+			}
+			pcm.limit(bytes);
+		}
 	}
-	
+
 	/** @author Nathan Sweet */
 	private static class WavInputStream extends FilterInputStream {
 		private int dataRemaining;

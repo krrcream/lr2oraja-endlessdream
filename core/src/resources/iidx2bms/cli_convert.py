@@ -131,6 +131,40 @@ def _scan_2dx_sections(data: bytes) -> list[tuple[str, int, int]]:
     return sections
 
 
+def _scan_s3p_sections(data: bytes) -> list[tuple[str, int, int]]:
+    """按 s3p_extract.c 的规则扫描一个 s3p 载荷，返回 (文件名, 载荷偏移, 字节数)。
+
+    头部为 "S3P0" + entries_count（u32 LE），其后是 entries_count×8 字节的条目表，
+    每条 {offset u32 LE, length u32 LE}；每个条目指向一个 S3V0 块，其 +4 处的
+    filestart（u32 LE）是块头长度，ASF/WMA 载荷 = [entry.offset+filestart, entry.offset+entry.length)。
+    键音名与 s3p_extract.c 一致：1 起始、按最大 4 位补零。结构不合法时返回空表，交由调用方回退 extract。
+    """
+    limit = len(data)
+    if limit < 8 or data[:4] != b"S3P0":
+        return []
+    entries_count = int.from_bytes(data[4:8], "little")
+    if entries_count == 0:
+        return []
+    digits = max(4, len(str(entries_count)))
+    if 8 + entries_count * 8 > limit:
+        return []
+    sections: list[tuple[str, int, int]] = []
+    for index in range(entries_count):
+        pos = 8 + index * 8
+        offset = int.from_bytes(data[pos : pos + 4], "little")
+        length = int.from_bytes(data[pos + 4 : pos + 8], "little")
+        if length < 32 or offset + length > limit:
+            return []
+        if data[offset : offset + 4] != b"S3V0":
+            return []
+        filestart = int.from_bytes(data[offset + 4 : offset + 8], "little")
+        payload = offset + filestart
+        if payload >= offset + length:
+            return []
+        sections.append((f"{index + 1:0{digits}d}.wav", payload, offset + length - payload))
+    return sections
+
+
 def _split_audio_entry_names(names: set[str], song_id_display: str) -> list[str]:
     """在容器文件名集合里按与 _split_audio_parts 相同的规则挑出分片链。"""
     if f"{song_id_display}.2dx" in names or f"{song_id_display}.s3p" in names:
@@ -188,19 +222,26 @@ def _direct_audio_from_directory(
     sound_root: Path, song_dir: Path, song_id_display: str
 ) -> list[tuple[str, int, list[tuple[str, int, int]]]]:
     """解包目录的主音频：返回 (容器相对路径, 容器基址, 段表) 清单。"""
-    main_2dx = song_dir / f"{song_id_display}.2dx"
-    if main_2dx.is_file():
-        parts = [main_2dx]
+    main = None
+    for extension in (".2dx", ".s3p"):
+        candidate = song_dir / f"{song_id_display}{extension}"
+        if candidate.is_file():
+            main = candidate
+            break
+    if main is not None:
+        parts = [main]
     else:
-        if (song_dir / f"{song_id_display}.s3p").is_file():
-            raise RuntimeError(".s3p audio is not supported by direct read")
         parts = _split_audio_parts(song_dir, song_id_display)
         if not parts:
-            raise RuntimeError("no .2dx main audio or split parts found")
-    if any(part.suffix.lower() != ".2dx" for part in parts):
-        raise RuntimeError("direct read only supports .2dx audio containers")
+            raise RuntimeError("no .2dx/.s3p main audio or split parts found")
     return [
-        (_relative_audio_path(part, sound_root), 0, _scan_2dx_sections(part.read_bytes()))
+        (
+            _relative_audio_path(part, sound_root),
+            0,
+            _scan_2dx_sections(part.read_bytes())
+            if part.suffix.lower() == ".2dx"
+            else _scan_s3p_sections(part.read_bytes()),
+        )
         for part in parts
     ]
 
@@ -211,16 +252,18 @@ def _direct_audio_from_ifs(
     """IFS 内的主音频：绝对偏移为 manifest_end + entry.start + 段内偏移。"""
     manifest_end, entries = _ifs_entry_table(ifs_file)
     names = set(entries)
-    if f"{song_id_display}.2dx" in names:
-        parts = [f"{song_id_display}.2dx"]
-    elif f"{song_id_display}.s3p" in names:
-        raise RuntimeError(".s3p audio is not supported by direct read")
+    main = None
+    for extension in (".2dx", ".s3p"):
+        candidate = f"{song_id_display}{extension}"
+        if candidate in names:
+            main = candidate
+            break
+    if main is not None:
+        parts = [main]
     else:
         parts = _split_audio_entry_names(names, song_id_display)
     if not parts:
-        raise RuntimeError("no .2dx main audio or split parts found in the IFS")
-    if any(not name.lower().endswith(".2dx") for name in parts):
-        raise RuntimeError("direct read only supports .2dx audio containers")
+        raise RuntimeError("no .2dx/.s3p main audio or split parts found in the IFS")
 
     relative_path = _relative_audio_path(ifs_file, sound_root)
     descriptors: list[tuple[str, int, list[tuple[str, int, int]]]] = []
@@ -234,9 +277,12 @@ def _direct_audio_from_ifs(
             data = handle.read(size)
             if len(data) != size:
                 raise RuntimeError(f"short read from {Path(ifs_file).name}:{start}")
-            descriptors.append(
-                (relative_path, manifest_end + start, _scan_2dx_sections(data))
+            sections = (
+                _scan_2dx_sections(data)
+                if name.lower().endswith(".2dx")
+                else _scan_s3p_sections(data)
             )
+            descriptors.append((relative_path, manifest_end + start, sections))
     return descriptors
 
 
@@ -248,19 +294,26 @@ def build_direct_audio_index(
 ) -> dict:
     """扫描谱面来源里的主音频容器，生成直读索引。
 
-    不支持的来源（standard/.s3p、未知容器、扫描不到任何段）一律抛异常，
+    不支持的来源（未知容器、扫描不到任何段）一律抛异常，
     由调用方在同一进程内回退到 extract。
     """
     song_id_display = str(song_id_display)
-    if source_kind != "ifs":
-        raise RuntimeError(f"direct audio read does not support chart source kind {source_kind!r}")
-    source = Path(source_files["ifs"])
-    if source.is_dir():
-        descriptors = _direct_audio_from_directory(sound_root, source, song_id_display)
-    elif source.suffix.lower() == ".ifs":
-        descriptors = _direct_audio_from_ifs(sound_root, source, song_id_display)
+    if source_kind == "standard":
+        # 上游把 <id>.1 + <id>.s3p + <id>_pre.2dx 目录判为 standard，主音频是独立的 <id>.s3p 文件
+        audio = Path(source_files["audio"])
+        descriptors = [
+            (_relative_audio_path(audio, sound_root), 0, _scan_s3p_sections(audio.read_bytes()))
+        ]
+    elif source_kind == "ifs":
+        source = Path(source_files["ifs"])
+        if source.is_dir():
+            descriptors = _direct_audio_from_directory(sound_root, source, song_id_display)
+        elif source.suffix.lower() == ".ifs":
+            descriptors = _direct_audio_from_ifs(sound_root, source, song_id_display)
+        else:
+            raise RuntimeError(f"direct audio read does not support chart source {source.name}")
     else:
-        raise RuntimeError(f"direct audio read does not support chart source {source.name}")
+        raise RuntimeError(f"direct audio read does not support chart source kind {source_kind!r}")
 
     containers: list[dict] = []
     container_index: dict[str, int] = {}
@@ -275,7 +328,7 @@ def build_direct_audio_index(
             # 分片按顺序扫描，同名条目后来者覆盖先来者
             wav[name] = [index, base_offset + payload_offset, size]
     if not wav:
-        raise RuntimeError("no 2DX sections found in the main audio container")
+        raise RuntimeError("no audio sections found in the main audio container")
     return {
         "index_version": AUDIO_INDEX_VERSION,
         "audio_mode": AUDIO_MODE_DIRECT,
@@ -300,7 +353,7 @@ def _register_direct_audio(
     if _AUDIO_MODE_ACTIVE != AUDIO_MODE_DIRECT:
         return
     audio_file = Path(copied["audio"])
-    if audio_file.suffix.lower() != ".2dx":
+    if audio_file.suffix.lower() not in (".2dx", ".s3p"):
         return
     work_key = str(Path(work_dir).resolve())
     _DIRECT_AUDIO_SUPPRESSION.add((work_key, audio_file.name))
@@ -792,6 +845,10 @@ def apply_chart_source_patch() -> dict[str, bool]:
         archive_path: Path,
         progress_callback=None,
     ):
+        # direct 模式的主 s3p 音频不落盘，交给 Java 侧按索引直读；
+        # s3p 只用作主音频（预览恒为 _pre.2dx），没有预览分支，因此直接按全局模式压制
+        if _AUDIO_MODE_ACTIVE == AUDIO_MODE_DIRECT:
+            return _empty_audio_out_dir(work_dir, archive_path)
         parts = _registered_split_parts(work_dir, archive_path)
         if not parts:
             return original_extract_s3p(project_root, work_dir, archive_path, progress_callback)
