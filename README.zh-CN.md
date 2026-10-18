@@ -23,8 +23,9 @@
 
 ### LDJ 游戏内歌单
 
-本功能以独立工具 [iidx2bms（个人分支）](https://github.com/krrcream/iidx2bms)（`orajaroot` 分支）作为格式转换后端，其上游项目为 [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms)，可将用户本地已有的对应格式谱面实时转换后，集成到游戏选曲界面中直接浏览与游玩。
+本功能以独立工具 [iidx2bms（个人分支）](https://github.com/krrcream/iidx2bms) 作为格式转换后端，其上游项目为 [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms)，可将用户本地已有的对应格式谱面实时转换后，集成到游戏选曲界面中直接浏览与游玩。
 
+对应 iidx2bms 的两个分支：`orajaroot` 为常规版（转换时落盘音频中间产物）；`orajaroot-plus` 为不落盘音频中间产物版。
 - 选曲界面新增独立的 `LDJ` 分类目录
 - 支持自定义难度表（Table）分类，可导入外部难度表文件
 - 首次选择曲目时自动触发格式转换，完成后即可正常游玩
@@ -52,10 +53,9 @@
 
 ### 前置准备
 
-1. 准备好 beatoraja 0.8.8 基础安装环境，将本分支构建得到的 jar 文件重命名为 `beatoraja.jar` 并替换原文件。
+1. 准备好 beatoraja 0.8.8 基础安装环境。
    - 若目录中没有 `config_sys.json`，先启动一次游戏再关闭以生成该文件。
-2. 单独克隆 [iidx2bms](https://github.com/krrcream/iidx2bms) 的 `orajaroot` 分支到任意目录，确保目录内包含 `conversion/conversion.py` 与 `music_data/music_data.json`。
-
+2. 单独克隆 [iidx2bms](https://github.com/krrcream/iidx2bms) 到任意目录，确保目录内包含 `conversion/conversion.py` 与 `music_data/music_data.json`。常规版用 `orajaroot` 分支，不落盘音频中间产物版用 `orajaroot-plus` 分支。
 ### 配置项说明
 
 编辑游戏目录下的 `config_sys.json`，添加以下配置项：
@@ -88,7 +88,7 @@
 
 #### 前置条件
 
-- `config_sys.json` 中 `LDJ_ToolPath` 需正确指向 iidx2bms 的 `orajaroot` 分支根目录，且目录下存在 `music_data/music_data.json`；无该文件时整个 LDJ 分类不会显示。
+- `config_sys.json` 中 `LDJ_ToolPath` 需正确指向 iidx2bms 的分支根目录（常规版 `orajaroot`，不落盘音频中间产物版 `orajaroot-plus`），且目录下存在 `music_data/music_data.json`；无该文件时整个 LDJ 分类不会显示。
 - 难度表中的曲目需能在 `music_data.json` 中匹配到，匹配失败的条目会被静默忽略。
 
 #### 存放位置
