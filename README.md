@@ -1,132 +1,164 @@
-<div align="center" style="line-height: 1;">
+# LR2oraja ~Endless Dream~ Personal Build
 
-# LR2oraja \~Endless Dream\~
+[简体中文](README.zh-CN.md)・English
 
-<!-- swap this between default and default-inverted to update the number -->
-[![DISCORD](https://dcbadge.limes.pink/api/server/HutCHCZHns?theme=default-inverted)](https://discord.gg/HutCHCZHns)
+This repository is a personal custom build of [LR2oraja ~Endless Dream~](https://github.com/seraxis/lr2oraja-endlessdream). It keeps every upstream feature intact, integrates backbeat support, and adds personal-use functionality such as the in-game LDJ song list and trainer enhancements.
 
-</div>
+>
+> **About this project**: This is a personally maintained branch for my own use. No technical support of any kind is provided, and submitted issues may not be handled.
 
-Endless Dream is a community fork and drop-in replacement for [beatoraja](https://github.com/exch-bms2/beatoraja) that integrates quality of life patches and new features not present in the upstream version of the game.
+---
 
-Based on [LR2oraja](https://github.com/wcko87/lr2oraja), which is itself a fork with LR2 judges and gauges, Endless Dream aims to fix some of the outstanding issues with the upstream project while being a central place for modifications and extensions that may never be accepted by upstream.
+## Important Notice and Copyright
 
-### Key Features
-* In-game song downloader
-* LR2 GBATTLE support
-* Osu file support
-* On the fly ratemods/freq
-* Increased performance by using the latest graphics backends available to libgdx
-* Faster Table Processing
-* Compatible with beatoraja 0.8.8 installs
-* Built in Mod Menu, accessible using **`F5` or `Insert`**
+1. This repository contains only the modified game engine code. It contains no music, chart, movie or other game data files, and provides no channels or methods for obtaining and downloading such resources.
+2. This repository provides no methods, tools or information for cracking, bypassing or decrypting any protection or encryption.
+3. The LDJ feature only converts and reads files the user already has locally; all resource files must be prepared by the user.
+4. Please make sure that every resource you use is legally licensed, and that you use it only for personal study and research.
+5. This project is not responsible for any third-party copyright issues. Do not use this program for any infringing purpose.
 
-> [!CAUTION]
-> Don't use this application to play non-permitted copyrighted contents.
+---
 
-## Downloads
-> [!NOTE]
-> As of 0.3.0 the Java version has changed from 8 to 17, please check the releases page to update your installations java version
-### Download here
-- [**Windows Download**](https://github.com/seraxis/lr2oraja-endlessdream/releases/download/v0.4.0/lr2oraja-0.8.8-endlessdream-windows-0.4.0.jar)
-- [**Linux Download**](https://github.com/seraxis/lr2oraja-endlessdream/releases/download/v0.4.0/lr2oraja-0.8.8-endlessdream-linux-0.4.0.jar)
-- [**Macos Download (Apple Silicon)**](https://github.com/seraxis/lr2oraja-endlessdream/releases/download/v0.4.0/lr2oraja-0.8.8-endlessdream-macos-aarch64-0.4.0.jar)
-- [**Macos Download (Intel)**](https://github.com/seraxis/lr2oraja-endlessdream/releases/download/v0.4.0/lr2oraja-0.8.8-endlessdream-macos-0.4.0.jar)
+## New Features
 
-Development builds are created for every commit and published as [releases](https://github.com/seraxis/lr2oraja-endlessdream/releases)
+### LDJ In-Game Song List
 
-### Installation
+This feature uses the standalone tool [iidx2bms (personal fork)](https://github.com/krrcream/iidx2bms) as its format conversion backend, whose upstream project is [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms). It converts the corresponding chart format the user already has locally in real time, and integrates the result into the in-game song select screen for direct browsing and playing.
 
-#### From Scratch
+Corresponds to two iidx2bms branches: `orajaroot` is the standard version (writes audio intermediate products during conversion); `orajaroot-plus` is the no-audio-intermediate-product version.
+- A separate `LDJ` category folder in the song select screen
+- Support for custom difficulty tables (Tables), which can be imported as external table files
+- Format conversion starts automatically the first time a chart is selected; once it finishes you can play normally
+- Local conversion cache, so the same content is not converted twice and does not tie up system resources
+- Scores are stored separately in `ldjscore.db` and never mixed with `score.db` for native charts
+- IR upload is disabled by default, so native score records are unaffected
 
-1. Download the latest [`beatoraja-0.8.8 JRE`](https://mocha-repository.info/download/beatoraja0.8.8-jre-win64.zip) bundled version.
-2. Unzip the file
-3. Copy the unzipped directory to any directory on your computer where you keep applications
-4. Download the latest Endless Dream for your operating system [from the bottom of the release page](https://github.com/seraxis/lr2oraja-endlessdream/releases/tag/v0.4.0)
-5. Go to your beatoraja directory and delete `beatoraja.jar`.
-6. Copy the downloaded `lr2oraja.*.jar` from Step 4 into your beatoraja directory.
-7. Rename the `lr2oraja.*.jar` file to `beatoraja.jar`
+>
+> Note: iidx2bms is an independent format conversion tool project. This repository contains neither its code nor any data files; download and configure it separately.
 
-#### From an Existing Beatoraja Install
+### trainer_plus Enhanced Trainer Menu
 
-1. Create a copy of your existing beatoraja install directory.
-2. Rename the copy to `endless-dream`.
-3. Download the latest Endless Dream for your operating system [from the bottom of the release page](https://github.com/seraxis/lr2oraja-endlessdream/releases/tag/v0.4.0)
-4. Go to your `endless-dream` directory and delete `beatoraja.jar`.
-5. Copy the downloaded `lr2oraja.*.jar` from Step 3 into your beatoraja directory.
-6. Rename the `lr2oraja.*.jar` file to `beatoraja.jar`
+The following training features were added to the built-in Mod menu (shortcut `F5` / `Insert`):
 
-### Post Install
-Once you're set up with a copy of LR2oraja Endless Dream you might want to check out the excellent [Beatoraja English Guide](https://github.com/wcko87/beatoraja-english-guide/wiki) that has answers to all of your questions about beatoraja and BMS, including a list of skins, where to get songs, and how to use tables.
+- Emulates IIDX-style groove gauge and judgement
+- Enhanced frequency (rate) training: 0.1% fine adjustment, 0.5% steps in practice mode, simulation of the original judgement logic, and simulation of the original gauge behavior
 
-Alternatively you can ask in our [Discord](https://discord.gg/HutCHCZHns) and we'll be happy to help you out.
+### backbeat Integration
 
-## Building from source
-A JDK 17 **with javafx** is required to build and run. Consider using [liberica JDK](https://bell-sw.com/pages/downloads/#jdk-17-lts), ensure that you download `Package: Full JDK` to get the JavaFX version.
+Merged the [Endless Dream branch maintained by zkldi with backbeat support](https://github.com/zkldi/lr2oraja-endlessdream/releases), which can be used for chart downloads; see the upstream project's documentation for usage.
 
-Clone this repository with submodules
-```sh
-git clone --recurse-submodules git@github.com:seraxis/lr2oraja-endlessdream.git
+---
+
+## Configuration
+
+### Prerequisites
+
+1. Have a working base beatoraja 0.8.8 installation.
+   - If there is no `config_sys.json` in the directory, launch the game once and close it to generate the file.
+2. Separately clone [iidx2bms](https://github.com/krrcream/iidx2bms) into any directory, and make sure it contains `conversion/conversion.py` and `music_data/music_data.json`. The standard version uses the `orajaroot` branch, and the no-audio-intermediate-product version uses the `orajaroot-plus` branch.
+### Configuration Options
+
+Edit `config_sys.json` in the game directory and add the following options:
+
+| Option | Description |
+| --- | --- |
+| `LDJ_SoundPath` | Root directory of the sound files for the corresponding local format. Leave empty to disable the entire LDJ feature. |
+| `LDJ_MoviePath` | Root directory of the movie files for the corresponding local format. |
+| `LDJ_ToolPath` | Full path to the directory containing the iidx2bms tool. |
+| `LDJ_Sources` | Directory for LDJ runtime files (cache, session data, `ldjscore.db`). Leave empty to use the system temporary directory, where the cache may be cleaned up by the system. |
+| `LDJ_CacheEnabled` | Whether to enable the conversion cache; enabling it avoids repeated conversions. |
+| `LDJ_CacheMaxSizeMB` | Maximum size of the conversion cache, in MB. |
+| `LDJ_IncludeBGA` | Whether to include background movies when converting. |
+| `LDJ_IncludePreview` | Whether to include preview audio when converting. |
+
+### Example Configuration
+
 ```
-Run the gradle wrapper for your operating system and specify your desired platform as a [gradle system property](https://docs.gradle.org/current/userguide/build_environment.html#sec:gradle_system_properties)
-
-**Windows:**
-```powershell
-.\gradlew.bat core:shadowJar -Dplatform=windows
-```
-**Linux:**
-```sh
-./gradlew core:shadowJar -Dplatform=linux
-```
-**MacOS:**
-```sh
-./gradlew core:shadowJar -Dplatform=macos
+"LDJ_SoundPath": "D:\\Games\\LDJ\\data\\sound",
+"LDJ_MoviePath": "D:\\Games\\LDJ\\data\\movie",
+"LDJ_ToolPath": "D:\\Tools\\iidx2bms",
+"LDJ_Sources": "D:\\Games\\beatoraja\\ldj",
+"LDJ_CacheEnabled": true,
+"LDJ_CacheMaxSizeMB": 2048,
+"LDJ_IncludeBGA": true,
+"LDJ_IncludePreview": true
 ```
 
-> [!NOTE]
-> For `arm` user: add -Darch=aarch64
+### LDJ Difficulty Tables (LDJ_table)
 
-This task will create a jar located in `dist/` that can be used with any working installation of the game.
+#### Prerequisites
 
-## Working on Endless Dream
-Use of an IDE, such as [IntelliJ Community Edition](https://www.jetbrains.com/idea/download/other.html), is recommended for working on Endless Dream.
+- `LDJ_ToolPath` in `config_sys.json` must point correctly to the root of the iidx2bms branch (standard version `orajaroot`, no-audio-intermediate-product version `orajaroot-plus`), and that directory must contain `music_data/music_data.json`; without that file the whole LDJ category is not shown.
+- Charts in a difficulty table must be matchable in `music_data.json`; entries that fail to match are silently ignored.
 
-### Contributing to the project
-To get started working on Endless Dream [fork the project](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo), and start programming on a new branch.
+#### Location
 
-Once you're done you can [open a PR](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) against the main project, and one of the maintainers will review your code.
+Create an `LDJ_table` folder next to `beatoraja.jar` (the directory name is fixed, with no additional option for it), and put the difficulty table `.json` files directly into it.
 
-Before starting it's good to think about what you want to do, and to discuss your ideas with other collaborators. Open an issue, or consider joining the [Discord server](https://discord.gg/HutCHCZHns). It's the place where most communication and collaboration happens.
-
-### Running and building
-The gradle `core:runShadow` task can be used to quickly test and debug changes made to the project. The `core:shadowJar` task builds the project for your operating system. **Do not use the default gradle run tasks, they will not work.**
-
-<img width="358" height="281" alt="Expanding the gradle tab on the right shows the available tasks for the project. Expanding `core` and then `application` and `shadow` reveals the tasks you will use to run and build the project" src="https://github.com/user-attachments/assets/0adcd7e7-724f-4653-a1b0-e1a637f623f0" />
-
-### Running from an existing install of beatoraja
-Configure the `runDir` system property to point to a beatoraja install. If you do not configure this it will run in the `assets/` folder of the git project.
-
-Click the 'Three Dots' next to the run configurations panel in the window bar, Edit the runShadow configuration, and add `-DrunDir="[FULL PATH TO RAJA INSTALL]"`
-
-<img width="1389" height="321" alt="A demonstration of adding a runDir to the runShadow task" src="https://github.com/user-attachments/assets/3dd096b7-6995-4ab7-b7e9-8a18e038dc83" />
-
-If you'd like to test IR dependent changes append the `useIR` system property to the run configuration and set it to `true` (e.g. `-DuseIR=true`). Be aware of this [existing bug](https://github.com/seraxis/lr2oraja-endlessdream/issues/189) with this property.
-
-### Cannot Resolve Symbols for project submodules
-IntelliJ sometimes cannot identify the projects submodules leading to missing classes (e.g. `bms.model.*`). This does not affect building or running the project, but can be quite annoying.
-
-First verify that `./core/dependencies` contains the `jbms-parser` and `jbmstable-parser` folders. If they are missing run `git submodule update --init --recursive` to fetch any submodules you may have missed while cloning.
-
-If submodules are present go to `File --> Project Structure --> Modules --> core --> Dependencies --> Add --> JARs or Directories...` and add both `./core/dependencies/jbms-parser` and `./core/dependencies/jbmstable-parser` then hit Apply.
-
-<img width="1687" height="321" alt="endlessdreamprojectstructure" src="https://github.com/user-attachments/assets/dd1b9d41-d1e6-42db-9139-8adbcada1014" />
-
-After you are done you should see no further import related errors. If you encounter difficulty join the [Discord server](https://discord.gg/HutCHCZHns) to ask for help.
-
-### Running from the command line
-Running from the command line is as simple as building from source, and looks like this:
-
-**Windows:**
-```powershell
-.\gradlew.bat core:runShadow -Dplatform=windows -DrunDir="C:\beatoraja0.8.8" -DuseIR=true
 ```
+beatoraja/
+├── beatoraja.jar
+├── config_sys.json
+└── LDJ_table/
+    ├── table1.json
+    └── table2.json
+```
+
+#### File Rules
+
+- Only the `.json` files directly at the top level of the folder are scanned; subdirectories are not read recursively.
+- Sorted by filename in case-insensitive ascending order, which determines the display order of the tables.
+- If a file has no `title` field, the filename (without the extension) is used as the table name by default.
+
+#### Format
+
+The `iidx-pro-difficulty-table` format is used (not beatoraja's native difficulty table format). Its core structure is:
+
+```
+{
+  "title": "table name",
+  "groups": [
+    {
+      "name": "group name",
+      "charts": [
+        { "musicId": 12345, "chartType": 3, "difficultyValue": 12.5, "label": "★12" }
+      ]
+    }
+  ]
+}
+```
+
+- `musicId`: the chart number in `music_data.json`
+- `chartType`: 0–4 correspond to the SP difficulties, 5–9 to the DP difficulties
+- `difficultyValue`: the sort key for charts within a group, in ascending order
+- `label`: the difficulty label shown after the chart
+
+#### Notes
+
+- Difficulty tables are read only once at game launch, so adding, removing or editing files requires a restart to take effect.
+- When there is no valid table file, the `Table` category is not shown, and the other LDJ features are unaffected.
+- Corrupted files, format errors and failed matches are all handled silently and will not crash the game.
+
+### Launching
+
+Launch the game and open the song select screen; the `LDJ` category folder is there. The conversion progress is shown the first time a chart is selected, and once it finishes you can play normally.
+
+---
+
+## Credits
+
+This project is open source under the GNU GPL v3 license; see the [LICENSE](LICENSE) file for the full text.
+
+It is derived from the following upstream projects:
+
+- [beatoraja](https://github.com/exch-bms2/beatoraja)
+- [LR2oraja](https://github.com/wcko87/lr2oraja)
+- [LR2oraja ~Endless Dream~](https://github.com/seraxis/lr2oraja-endlessdream)
+- [The Endless Dream branch with backbeat support](https://github.com/zkldi/lr2oraja-endlessdream/releases)
+
+The upstream of the [iidx2bms personal fork](https://github.com/krrcream/iidx2bms) that the LDJ feature depends on is [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms).
+
+---
+
+>
+> ⚠️ Do not use this program to play copyrighted content you are not authorized to play.
