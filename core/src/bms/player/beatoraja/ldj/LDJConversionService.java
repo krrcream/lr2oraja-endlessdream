@@ -287,6 +287,9 @@ public class LDJConversionService {
 		if (request.overwrite) {
 			command.add("--overwrite");
 		}
+		// LDJPlus 变体固定直读；索引生成失败时转换器会在同一进程内回退 extract
+		command.add("--audio-mode");
+		command.add(AUDIO_MODE_DIRECT);
 
 		ProcessBuilder builder = new ProcessBuilder(command);
 		builder.redirectErrorStream(true);
