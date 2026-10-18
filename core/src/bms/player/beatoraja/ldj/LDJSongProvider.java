@@ -160,6 +160,8 @@ public class LDJSongProvider {
 		song.setSha256(scoreKey);
 		// 为了让路径在转换时被改写为实际文件后仍能看出源自LDJ，在生成时就确定分数键
 		song.setLDJScoreKey(scoreKey);
+		// 保留 iidx:// 源路径，缓存被删后可据此重转
+		song.setLDJPath(path);
 		return song;
 	}
 

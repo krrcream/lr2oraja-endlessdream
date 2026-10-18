@@ -608,6 +608,14 @@ public final class MusicSelector extends MainState {
 	 *                已改写为实际 BMS，无法从路径判定，因此由调用方显式指定
 	 */
 	public void readChart(SongData song, Bar current, boolean fromLDJ) {
+		if (fromLDJ && !LDJSongProvider.isLDJPath(song.getPath())) {
+			// 路径已被改写成实际 BMS；若缓存被删导致该文件不存在，恢复 iidx:// 源路径以便重转
+			final String sourcePath = song.getLDJPath();
+			if (sourcePath != null && !sourcePath.isEmpty()
+					&& !Files.exists(Paths.get(song.getPath()))) {
+				song.setPath(sourcePath);
+			}
+		}
 		if (LDJSongProvider.isLDJPath(song.getPath())) {
 			// 为使路径因转换改写为实际文件后也不丢失虚拟分数键，在此固定
 			// 缓存命中时会在 startLDJConversion 内同步改写路径，因此必须在此之前调用

@@ -71,6 +71,10 @@ public class SongData implements Validatable, IpfsInformation {
 	 * LDJ谱面的虚拟分数键，即由 iidx:// 生成的临时哈希，为 null 则是普通谱面
 	 */
 	private String ldjSha256;
+	/**
+	 * LDJ谱面的原始 iidx:// 源路径，路径会被改写成实际 BMS，删缓存后靠它重转
+	 */
+	private String ldjPath;
 	private String url;
 	private String appendurl;
 	private String ipfs;
@@ -448,6 +452,18 @@ public class SongData implements Validatable, IpfsInformation {
 	 */
 	public void setLDJScoreKey(String sha256) {
 		this.ldjSha256 = sha256;
+	}
+	/**
+	 * 保存 LDJ 谱面的 iidx:// 源路径，路径被改写成实际 BMS 后仍可据此重转
+	 */
+	public void setLDJPath(String ldjPath) {
+		this.ldjPath = ldjPath;
+	}
+	/**
+	 * 返回 LDJ 谱面的 iidx:// 源路径，非 LDJ 谱面为 null
+	 */
+	public String getLDJPath() {
+		return ldjPath;
 	}
 	/**
 	 * 该谱面是否来自 LDJ，为真时 sha256 不是实际文件的内容哈希，而是虚拟哈希
