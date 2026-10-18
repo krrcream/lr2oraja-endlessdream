@@ -39,6 +39,61 @@ public class LDJConversionService {
 	/** 写入转换结果目录的清单文件名 */
 	public static final String MANIFEST_FILE = "manifest.json";
 
+	/** 每个缓存目录中随直读音频一同生成的索引文件名 */
+	public static final String AUDIO_INDEX_FILE = "ldj_audio.json";
+
+	/** 音频索引的结构版本，必须与清单中的 index_version 一致 */
+	public static final int AUDIO_INDEX_VERSION = 1;
+
+	/** 直读音轨：不导出 WAV，运行时按索引从容器中切片 */
+	public static final String AUDIO_MODE_DIRECT = "direct";
+
+	/** 预提取音轨：导出全部 WAV，运行时读取 WAV 文件 */
+	public static final String AUDIO_MODE_EXTRACT = "extract";
+
+	/*
+	 * 直读音频的数据契约（index_version = 1）
+	 *
+	 * 每首曲目的缓存目录中最多有一个 ldj_audio.json，只有 audio_mode = direct 时才会生成。
+	 * 文件内容如下：
+	 *
+	 * {
+	 *   "index_version": 1,
+	 *   "audio_mode": "direct",
+	 *   "song_id": "12345",
+	 *   "containers": [
+	 *     { "path": "12345.ifs" },
+	 *     { "path": "12345-1.ifs" }
+	 *   ],
+	 *   "wav": {
+	 *     "0001.wav": [0, 31547392, 26944],
+	 *     "0002.wav": [0, 31574336, 12288],
+	 *     "0003.wav": [1, 1048576, 8192]
+	 *   }
+	 * }
+	 *
+	 * 各字段的约定：
+	 * - index_version：索引结构版本，必须与清单 options.index_version 相同。
+	 * - audio_mode：固定为 direct；本文件不用于 extract 模式。
+	 * - song_id：仅用于排查问题，运行时不做校验。
+	 * - containers[].path：相对 LDJ 音频根的路径，可以指向 .ifs，也可以指向解包后的 .2dx；
+	 *   不带大小、时间戳或哈希，因此缓存目录整体搬家后索引仍然有效。
+	 * - wav：键是 BME 中 #WAVxx 使用的精确文件名，值是
+	 *   [容器下标, 容器内绝对字节偏移, 字节数]；条目从 1 开始编号，
+	 *   文件名宽度沿用现有提取逻辑的 max(4, 声明键音数的十进制位数)。
+	 *
+	 * 生成与读取的约定：
+	 * - 索引由 Python 转换器生成，Java 侧只读，从不改写。
+	 * - 写入顺序固定为「先索引、后清单」：索引先写到同目录的临时文件，
+	 *   原子重命名成 ldj_audio.json 后才写 manifest.json。
+	 *   因此清单声明 direct 时，索引一定已经完整可见。
+	 * - 任何一个环节失败都回退为 extract，并在清单中如实记录最终模式，
+	 *   不会留下声明 direct 却没有索引的缓存。
+	 * - 失效条件是整曲重转：清单 options.audio_mode 或 options.index_version
+	 *   缺失、取值不符，或者 direct 模式下索引缺失、版本不符，
+	 *   都按普通缓存未命中处理。
+	 */
+
 	private final LDJTempFileManager tempFiles;
 
 	/** 所使用的 Python 解释器的启动命令(例: ["py", "-3"])，未检测到则为 null */
@@ -332,17 +387,50 @@ public class LDJConversionService {
 		// 否则降级转换（p0_patch=false）的缓存每次都会被判定为过期
 		// dir_fallback、nonstd_ifs_accept、split_audio_merge 同理：
 		// 缺失说明该缓存是各自支持之前写入的
+		// audio_mode、index_version 缺失说明该缓存是直读改造之前写入的；
+		// 两者由转换器同时写入，任何一个不符都按普通缓存未命中处理，整曲重转
+		// 直读缓存还要求索引存在且版本一致，索引被删除或改动时同样重转
 		JsonValue options = payload.get("options");
-		if (options == null
-				|| options.getBoolean("include_bga", true) != request.includeBga
+		if (options == null) {
+			return null;
+		}
+		String audioMode = options.getString("audio_mode", "");
+		if (options.getBoolean("include_bga", true) != request.includeBga
 				|| options.getBoolean("include_preview", true) != request.includePreview
 				|| options.get("p0_patch") == null
 				|| options.get("dir_fallback") == null
 				|| options.get("nonstd_ifs_accept") == null
-				|| options.get("split_audio_merge") == null) {
+				|| options.get("split_audio_merge") == null
+				|| (!AUDIO_MODE_DIRECT.equals(audioMode) && !AUDIO_MODE_EXTRACT.equals(audioMode))
+				|| options.getInt("index_version", -1) != AUDIO_INDEX_VERSION
+				|| (AUDIO_MODE_DIRECT.equals(audioMode) && !hasValidAudioIndex(cacheDir))) {
 			return null;
 		}
 		return parseResult(payload, request, cacheDir);
+	}
+
+	/**
+	 * 判断直读缓存附带的音频索引是否可用。
+	 *
+	 * <p>契约要求先写完索引再写清单，正常生成的缓存不会缺少索引；
+	 * 这里仍检查文件存在与 index_version，防止索引被删除或改动后继续使用。
+	 * 读取失败一律当作没有索引，交给上层按缓存未命中重转。</p>
+	 */
+	private static boolean hasValidAudioIndex(Path cacheDir) {
+		Path index = cacheDir.resolve(AUDIO_INDEX_FILE);
+		if (!Files.isRegularFile(index)) {
+			return false;
+		}
+		try {
+			JsonValue payload = new JsonReader().parse(new String(Files.readAllBytes(index), StandardCharsets.UTF_8));
+			return payload.getInt("index_version", -1) == AUDIO_INDEX_VERSION;
+		} catch (IOException e) {
+			logger.warn("iidx2bms: failed to read the cached audio index {}", index, e);
+			return false;
+		} catch (RuntimeException e) {
+			logger.warn("iidx2bms: the cached audio index {} is not valid JSON", index);
+			return false;
+		}
 	}
 
 	private Result parseResult(JsonValue message, Request request) throws ConversionException {
