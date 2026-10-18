@@ -31,6 +31,10 @@ public class BGAProcessor {
 	// TODO イベントレイヤー対応(現状はミスレイヤーのみ)
 
 	private PlayerConfig player;
+	/**
+	 * LDJ movie 根目录（BGA 同名查找用），非 LDJ 或未配置时为 null
+	 */
+	private final Path movieRoot;
 	private float progress = 0;
 
 	private MovieProcessor[] movies = new MovieProcessor[0]; 
@@ -74,6 +78,8 @@ public class BGAProcessor {
 
 	public BGAProcessor(Config config, PlayerConfig player) {
 		this.player = player;
+		final String movie = config.getLDJ_MoviePath();
+		this.movieRoot = (movie == null || movie.isEmpty()) ? null : Paths.get(movie);
 
 		Pixmap blank = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
 		blank.setColor(Color.BLACK);
@@ -117,6 +123,8 @@ public class BGAProcessor {
 
 			// BMS格納ディレクトリ
 			Path dpath = Paths.get(model.getPath()).getParent();
+			// LDJ 歌曲：缓存目录里有 manifest.json，BGA 改在 movie 根下按同名查找
+			final Path bgaRoot = (movieRoot != null && Files.exists(dpath.resolve("manifest.json"))) ? movieRoot : dpath;
 
 			movies = new MovieProcessor[model.getBgaList().length];
 			for (String name : model.getBgaList()) {
@@ -125,7 +133,7 @@ public class BGAProcessor {
 				}
 				Path f = null;
 				try {
-					if (Files.exists(dpath.resolve(name))) {
+					if (Files.exists(bgaRoot.resolve(name))) {
 						final int index = name.lastIndexOf('.');
 						String fex = null;
 						if (index != -1) {
@@ -135,7 +143,7 @@ public class BGAProcessor {
 							if (Arrays.asList(mov_extension).contains(fex)){
 								name = name.substring(0, index);
 								for (String mov : mov_extension) {
-									final Path mpgfile = dpath.resolve(name + "." + mov);
+									final Path mpgfile = bgaRoot.resolve(name + "." + mov);
 									if (Files.exists(mpgfile)) {
 										f = mpgfile;
 										break;
@@ -144,14 +152,14 @@ public class BGAProcessor {
 							}else if (Arrays.asList(BGImageProcessor.pic_extension).contains(fex)){
 								name = name.substring(0, index);
 								for (String pic : BGImageProcessor.pic_extension) {
-									final Path picfile = dpath.resolve(name + "." + pic);
+									final Path picfile = bgaRoot.resolve(name + "." + pic);
 									if (Files.exists(picfile)) {
 										f = picfile;
 										break;
 									}
 								}
 							}else{
-								f = dpath.resolve(name);
+								f = bgaRoot.resolve(name);
 							}
 						}
 					}
@@ -161,7 +169,7 @@ public class BGAProcessor {
 							name = name.substring(0, index);
 						}
 						for (String mov : mov_extension) {
-							final Path mpgfile = dpath.resolve(name + "." + mov);
+							final Path mpgfile = bgaRoot.resolve(name + "." + mov);
 							if (Files.exists(mpgfile)) {
 								f = mpgfile;
 								break;
@@ -169,7 +177,7 @@ public class BGAProcessor {
 						}
 						if (f == null) {
 							for (String mov : BGImageProcessor.pic_extension) {
-								final Path picfile = dpath.resolve(name + "." + mov);
+								final Path picfile = bgaRoot.resolve(name + "." + mov);
 								if (Files.exists(picfile)) {
 									f = picfile;
 									break;

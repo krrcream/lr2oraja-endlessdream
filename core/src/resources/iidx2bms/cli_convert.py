@@ -95,6 +95,12 @@ _AUDIO_MODE_ACTIVE = AUDIO_MODE_EXTRACT
 # (work_dir 绝对路径, 音频文件名) 集合：direct 模式下这些容器不需要解压。
 _DIRECT_AUDIO_SUPPRESSION: set[tuple[str, str]] = set()
 
+# 第 6 步：BGA 改为运行时从 movie 根按同名读取，转换侧不再保留复制进来的视频文件。
+# 上游 convert_chart 仍会把 BGA 视频复制进结果目录，这里列出要删掉的视频扩展名。
+_BGA_VIDEO_EXTENSIONS: set[str] = {
+    ".mp4", ".wmv", ".m4v", ".webm", ".mpg", ".mpeg", ".m1v", ".m2v", ".avi", ".mov", ".mkv",
+}
+
 
 def _scan_2dx_sections(data: bytes) -> list[tuple[str, int, int]]:
     """按 2dx_parse.c 的规则扫描一个 2DX 载荷，返回 (文件名, 段内偏移, 字节数)。
@@ -933,6 +939,11 @@ def main(argv: list[str]) -> int:
                     raise
                 emit({"type": "warning", "message": f"stagefile unavailable, retrying without it: {message}"})
                 result_dir = run(False)
+
+        # 第 6 步：BGA 改为运行时从 movie 根按同名读取，转换侧不再保留复制进来的视频文件
+        for _bga in tuple(result_dir.glob("*")):
+            if _bga.is_file() and _bga.suffix.lower() in _BGA_VIDEO_EXTENSIONS:
+                _bga.unlink()
 
         # 补丁层 <id>-p0.ifs 里可能还藏着基础层没有的 SPL/DPL 谱面。
         # 这一步是可选的：它失败时只发 warning，pass 1 的结果照常返回。
