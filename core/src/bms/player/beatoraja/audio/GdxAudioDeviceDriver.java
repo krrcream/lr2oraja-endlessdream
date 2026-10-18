@@ -8,6 +8,7 @@ public class GdxAudioDeviceDriver extends AbstractAudioDriver {
 
 	public GdxAudioDeviceDriver(Config config) {
 		super(config.getSongResourceGen());
+		setLDJSoundRoot(config.getLDJ_SoundPath());
 	}
 
 	@Override

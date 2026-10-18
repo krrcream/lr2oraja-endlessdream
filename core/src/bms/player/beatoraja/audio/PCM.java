@@ -103,6 +103,51 @@ public abstract class PCM<T> {
 		return null;
 	}
 	
+	/**
+	 * LDJ 直读专用：从流解析 WAV 键音并生成 PCM。
+	 *
+	 * <p>与 {@link #load(Path, AudioDriver)} 的后处理一致，区别只是音源来自
+	 * 容器文件的一段字节区间（见 LDJAudioSliceInputStream），而非独立 WAV 文件。
+	 * name 仅用于报错信息，不影响解析。</p>
+	 */
+	public static PCM loadWav(InputStream in, String name, AudioDriver driver) {
+		try {
+			PCMLoader loader = new PCMLoader(driver);
+			loader.loadPCMWav(in, name);
+
+			PCM pcm = null;
+			if(loader.bitsPerSample > 16) {
+				pcm = FloatPCM.loadPCM(loader);
+			} else if(loader.bitsPerSample == 16) {
+				if(loader.pcm.isDirect()) {
+					pcm = ShortDirectPCM.loadPCM(loader);
+				} else {
+					pcm = ShortPCM.loadPCM(loader);
+				}
+			} else {
+				pcm = ShortPCM.loadPCM(loader);
+			}
+
+			if(pcm != null && ((AbstractAudioDriver)driver).channels != 0 && pcm.channels != ((AbstractAudioDriver)driver).channels) {
+				pcm = pcm.changeChannels(((AbstractAudioDriver)driver).channels);
+			}
+			if(pcm != null && ((AbstractAudioDriver)driver).getSampleRate() != 0 && pcm.sampleRate != ((AbstractAudioDriver)driver).getSampleRate()) {
+				pcm = pcm.changeSampleRate(((AbstractAudioDriver)driver).getSampleRate());
+			}
+
+			if(pcm.validate()) {
+				return pcm;
+			} else {
+				logger.warn("音源の読み込みに失敗しました - file : {}", name);
+				return null;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
+
 	public static PCM load(String name, AudioDriver driver) {
 		for(Path path : AudioDriver.getPaths(name)) {
 			PCM pcm = PCM.load(path,driver);
@@ -380,7 +425,119 @@ public abstract class PCM<T> {
 			
 //			System.out.println(p.getFileName().toString() + " - " + sampleRate + " Hz, " + bitsPerSample + " bits, " + channels + " channels");
 		}
-		
+
+		/**
+		 * LDJ 直读专用：从流解析 WAV 键音（与 loadPCM(Path) 的 .wav 分支一致）。
+		 *
+		 * <p>音源来自容器文件的一段字节区间，name 仅用于报错信息。</p>
+		 */
+		public void loadPCMWav(InputStream in, String name) throws IOException {
+			pcm = null;
+
+			try (WavInputStream input = new WavInputStream(new BufferedInputStream(in))) {
+				switch(input.type) {
+				case 1:
+				case 3:
+					{
+					channels = input.channels;
+					sampleRate = input.sampleRate;
+					bitsPerSample = input.bitsPerSample;
+
+					if(bitsPerSample == 16) {
+						pcm = getDirectByteBuffer(input.dataRemaining);
+						StreamUtils.copyStream(input, pcm);
+					} else {
+						OptimizedByteArrayOutputStream output = new OptimizedByteArrayOutputStream(input.dataRemaining);
+						StreamUtils.copyStream(input, output);
+						pcm = ByteBuffer.wrap(output.getBuffer()).order(ByteOrder.LITTLE_ENDIAN);
+						pcm.limit(output.size());
+					}
+
+					break;
+					}
+				case 2:
+					{
+					channels = input.channels;
+					sampleRate = input.sampleRate;
+					bitsPerSample = 16;
+					blockAlign = input.blockAlign;
+
+					OptimizedByteArrayOutputStream inputByteStream = new OptimizedByteArrayOutputStream(input.dataRemaining);
+					StreamUtils.copyStream(input, inputByteStream);
+					ByteBuffer inputByteBuffer = ByteBuffer.wrap(inputByteStream.getBuffer()).order(ByteOrder.LITTLE_ENDIAN);
+
+					MSADPCMDecoder decoder = new MSADPCMDecoder(channels, sampleRate, blockAlign);
+					pcm = decoder.decode(inputByteBuffer);
+
+					logger.info("Filename: {}", name);
+					break;
+					}
+				case 85:
+					{
+					try {
+						Bitstream bitstream = new Bitstream(new ByteArrayInputStream(
+								StreamUtils.copyStreamToByteArray(input, input.dataRemaining)));
+						ByteArrayOutputStream output = new ByteArrayOutputStream(4096);
+						MP3Decoder decoder = new MP3Decoder();
+						OutputBuffer outputBuffer = null;
+						while (true) {
+							Header header = bitstream.readFrame();
+							if (header == null)
+								break;
+							if (outputBuffer == null) {
+								channels = header.mode() == Header.SINGLE_CHANNEL ? 1 : 2;
+								outputBuffer = new OutputBuffer(channels, false);
+								decoder.setOutputBuffer(outputBuffer);
+								sampleRate = header.getSampleRate();
+							}
+							try {
+								decoder.decodeFrame(header, bitstream);
+							} catch (Exception ignored) {
+							}
+							bitstream.closeFrame();
+							output.write(outputBuffer.getBuffer(), 0, outputBuffer.reset());
+						}
+						bitstream.close();
+						byte[] bytes = output.toByteArray();
+						pcm = getDirectByteBuffer(bytes.length).put(bytes);
+						bitsPerSample = 16;
+					} catch (BitstreamException e) {
+						e.printStackTrace();
+					}
+					break;
+					}
+				default:
+					throw new IOException(name + " unsupported WAV format ID : " + input.type);
+				}
+			} catch (Throwable e) {
+				logger.warn("WAV処理中の例外 - file : {} error : {}{}", name, e.getMessage(), e.toString());
+			}
+
+			if(pcm == null) {
+				throw new IOException(name + " : can't convert to PCM");
+			}
+
+			int bytes = pcm.limit();
+			bytes -= bytes % (channels > 1 ? bitsPerSample / 4 : bitsPerSample / 8);
+			while(bytes > channels * bitsPerSample / 8) {
+				boolean zero = true;
+				for(int i = 0;i < channels * bitsPerSample / 8;i++){
+					zero &= (pcm.get(bytes - i - 1) == 0x00);
+				}
+				if(zero) {
+					bytes -= channels * bitsPerSample / 8;
+				} else {
+					break;
+				}
+			}
+			if(bytes < channels * bitsPerSample / 8) {
+				throw new IOException(name + " : 0 samples");
+			}
+			if(sampleRate == 0) {
+				throw new IOException(name + " : 0 sample rate");
+			}
+			pcm.limit(bytes);
+		}
 	}
 	
 	/** @author Nathan Sweet */

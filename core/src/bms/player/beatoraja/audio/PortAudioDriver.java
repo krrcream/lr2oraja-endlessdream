@@ -44,6 +44,7 @@ public class PortAudioDriver extends AbstractAudioDriver<PCM> implements Runnabl
 
 	public PortAudioDriver(Config config) {
 		super(config.getSongResourceGen());
+		setLDJSoundRoot(config.getLDJ_SoundPath());
 		DeviceInfo[] devices = getDevices();
 		// Get the default device and setup the stream parameters.
 		int deviceId = 0;

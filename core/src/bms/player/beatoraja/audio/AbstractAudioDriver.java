@@ -2,7 +2,12 @@ package bms.player.beatoraja.audio;
 
 import bms.model.*;
 import bms.player.beatoraja.ResourcePool;
+import bms.player.beatoraja.ldj.LDJAudioIndex;
+import bms.player.beatoraja.ldj.LDJAudioIndexCache;
+import bms.player.beatoraja.ldj.LDJAudioSliceInputStream;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -58,12 +63,29 @@ public abstract class AbstractAudioDriver<T> implements AudioDriver {
 	 * オーディオキャッシュデータ
 	 */
 	private final AudioCache cache;
+
+	/**
+	 * LDJ 直读音频索引的单条目缓存
+	 */
+	private final LDJAudioIndexCache ldjIndexCache = new LDJAudioIndexCache();
+
+	/**
+	 * LDJ 音频根目录（相对容器路径拼接用），非 LDJ 或未配置时为 null
+	 */
+	private Path ldjSoundRoot;
 	
 	private int sampleRate;
 	int channels;
 
 	public AbstractAudioDriver(int maxgen) {
 		cache = new AudioCache(Math.max(maxgen, 1));
+	}
+
+	/**
+	 * 设置 LDJ 音频根目录，用于把索引里的相对容器路径拼成绝对路径
+	 */
+	public void setLDJSoundRoot(String ldjSoundRoot) {
+		this.ldjSoundRoot = ldjSoundRoot == null || ldjSoundRoot.isEmpty() ? null : Paths.get(ldjSoundRoot);
 	}
 	/**
 	 * パスで指定された効果音ファイルの音源データを取得する
@@ -254,6 +276,9 @@ public abstract class AbstractAudioDriver<T> implements AudioDriver {
 		noteMapSize = 0;
 		// BMS格納ディレクトリ
 		Path dpath = Paths.get(model.getPath()).getParent();
+		// LDJ 直读索引：缓存目录下存在合法的 ldj_audio.json 且已配置音频根才启用直读
+		final LDJAudioIndex ldjIndex = ldjIndexCache.get(dpath);
+		final boolean ldjDirect = ldjIndex != null && ldjSoundRoot != null;
 
 		if (model.getVolwav() > 0 && model.getVolwav() < 100) {
 			volume = model.getVolwav() / 100f;
@@ -306,16 +331,27 @@ public abstract class AbstractAudioDriver<T> implements AudioDriver {
 			}
 			try {
 				Path p;
+				LDJAudioIndex.WavEntry direct = null;
+				Path directContainer = null;
 				if (wavid < wavcount) {
+					if (ldjDirect) {
+						direct = ldjIndex.getWav(wavlist[wavid]);
+					}
 					p = dpath.resolve(wavlist[wavid]).toAbsolutePath();
+					if (direct != null) {
+						directContainer = ldjSoundRoot.resolve(ldjIndex.getContainerPath(direct.containerIndex));
+					}
 				} else {
 					p = Paths.get("defaultsound/landmine.wav").toAbsolutePath();
 				}
 				for (Note note : waventry.getValue()) {
+					AudioKey key = direct != null
+							? new AudioKey(directContainer, direct.offset, direct.size, wavlist[wavid], note)
+							: new AudioKey(p.toString(), note);
 					// 音切りあり・なし両方のデータが必要になるケースがある
 					if (note.getMicroStarttime() == 0 && note.getMicroDuration() == 0) {
 						// 音切りなしのケース
-						wavmap[wavid] = cache.get(new AudioKey(p.toString(), note));
+						wavmap[wavid] = cache.get(key);
 						if (wavmap[wavid] == null) {
 							break;
 						}
@@ -332,7 +368,7 @@ public abstract class AbstractAudioDriver<T> implements AudioDriver {
 							}
 						}
 						if (b) {
-							T sliceaudio = cache.get(new AudioKey(p.toString(), note));
+							T sliceaudio = cache.get(key);
 							if (sliceaudio != null) {
 								slicesound[note.getWav()].add(new SliceWav<T>(note, sliceaudio));
 							} else {
@@ -592,50 +628,63 @@ public abstract class AbstractAudioDriver<T> implements AudioDriver {
 
 		private ObjectMap<String, PCM> pcmMap = new ObjectMap<String, PCM>();
 
+		private PCM loadPCM(AudioKey key) {
+			synchronized(pcmMap) {
+				PCM wav = pcmMap.get(key.path);
+				if (wav == null) {
+					if (key.directContainer != null) {
+						try {
+							wav = PCM.loadWav(new LDJAudioSliceInputStream(key.directContainer, key.directOffset, key.directSize),
+									key.directName, AbstractAudioDriver.this);
+						} catch (IOException e) {
+							logger.warn("iidx2bms: 直读容器打开失败：{}", key.directContainer, e);
+						}
+					} else {
+						wav = PCM.load(key.path, AbstractAudioDriver.this);
+					}
+					if (wav != null) {
+						pcmMap.put(key.path, wav);
+					}
+				}
+				return wav;
+			}
+		}
+
 		private T loadSlice(AudioKey key) {
-            PCM wav = null;
-            synchronized(pcmMap) {
-                wav = pcmMap.get(key.path);
-                if (wav == null) {
-                    wav = PCM.load(key.path, AbstractAudioDriver.this);
-                    if(wav != null) {
-                        pcmMap.put(key.path, wav);
-                    }
-                }
-            }
-
-            if (wav != null) {
-                try {
-                    final PCM slicewav = wav.slice(key.start, key.duration);
-                    return slicewav != null ? getKeySound(slicewav) : null;
-                    // System.out.println("WAV slicing - Name:"
-                    // + name + " ID:" + note.getWav() +
-                    // " start:" + note.getStarttime() +
-                    // " duration:" + note.getDuration());
-                } catch (Throwable e) {
+			PCM wav = loadPCM(key);
+			if (wav != null) {
+				try {
+					final PCM slicewav = wav.slice(key.start, key.duration);
+					return slicewav != null ? getKeySound(slicewav) : null;
+				} catch (Throwable e) {
 					logger.warn("音源(wav)ファイルスライシング失敗。{}", e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-
-            return null;
-        }
+					e.printStackTrace();
+				}
+			}
+			return null;
+		}
 
 		@Override
 		protected T load(AudioKey key) {
 			logger.trace("音源ファイルを読み込む中：{}", key.path);
 
-		    T sound = key.start == 0 && key.duration == 0
-                    ? getKeySound(Paths.get(key.path)) // 音切りなしのケース
-                    : loadSlice(key);
+			T sound;
+			if (key.directContainer != null) {
+				PCM wav = loadPCM(key);
+				sound = wav == null ? null
+						: (key.start == 0 && key.duration == 0 ? getKeySound(wav) : loadSlice(key));
+			} else {
+				sound = key.start == 0 && key.duration == 0
+					? getKeySound(Paths.get(key.path)) // 音切りなしのケース
+					: loadSlice(key);
+			}
 
-		    if (sound == null) {
+			if (sound == null) {
 				logger.warn("音源ファイル読み込み失敗：{}", key.path);
-            }
+			}
 			return sound;
 		}
 
-		
 		@Override
 		public synchronized void disposeOld() {
 			pcmMap.clear();
@@ -668,7 +717,7 @@ public abstract class AbstractAudioDriver<T> implements AudioDriver {
 	 */
 	private static class AudioKey {
 		/**
-		 * Audio File path
+		 * 音源标识：直读时为合成唯一键，否则为音频文件绝对路径
 		 */
 		public final String path;
 		/**
@@ -679,11 +728,39 @@ public abstract class AbstractAudioDriver<T> implements AudioDriver {
 		 * Audio duration(us)
 		 */
 		public final long duration;
+		/**
+		 * 直读容器绝对路径（非直读为 null）
+		 */
+		public final Path directContainer;
+		/**
+		 * 直读切片在容器内的绝对偏移（字节）
+		 */
+		public final long directOffset;
+		/**
+		 * 直读切片字节数
+		 */
+		public final long directSize;
+		/**
+		 * 直读键音文件名（分派解码器用）
+		 */
+		public final String directName;
 
 		public AudioKey(String path, Note n) {
+			this(path, n, null, 0, 0, null);
+		}
+
+		public AudioKey(Path directContainer, long directOffset, long directSize, String directName, Note n) {
+			this("ldjplus:" + directContainer + "#" + directOffset + "#" + directSize, n, directContainer, directOffset, directSize, directName);
+		}
+
+		private AudioKey(String path, Note n, Path directContainer, long directOffset, long directSize, String directName) {
 			this.path = path;
 			this.start = n.getMicroStarttime();
 			this.duration = n.getMicroDuration();
+			this.directContainer = directContainer;
+			this.directOffset = directOffset;
+			this.directSize = directSize;
+			this.directName = directName;
 		}
 
 		public boolean equals(Object o) {
