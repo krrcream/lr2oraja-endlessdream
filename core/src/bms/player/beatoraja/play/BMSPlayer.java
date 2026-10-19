@@ -248,14 +248,24 @@ public class BMSPlayer extends MainState {
 		resource.setFreqOn(false);
 		resource.setFreqString("");
 		// SP→DP in-memory conversion (改谱：不计分、不提交 IR，显示 assist 灯)
-		if (SPDPConvertMenu.isEnabled() && model.getMode() == Mode.BEAT_7K
+		if (SPDPConvertMenu.isEnabled()
 				&& (autoplay.mode == BMSPlayerMode.Mode.PLAY || autoplay.mode == BMSPlayerMode.Mode.PRACTICE
 						|| autoplay.mode == BMSPlayerMode.Mode.AUTOPLAY)) {
-			new SPDPConvertModifier().modify(model);
-			assist = Math.max(assist, 1);
-			score = false;
-			forceNoIRSend = true;
-			logger.info("SPtoDP 変換適用 : {}", model.getTitle());
+			if (SPDPConvertMenu.isDPSP()) {
+				if (model.getMode() == Mode.BEAT_14K) {
+					new DPSPConvertModifier(SPDPConvertMenu.isProcessJack()).modify(model);
+					assist = Math.max(assist, 1);
+					score = false;
+					forceNoIRSend = true;
+					logger.info("DPtoSP 変換適用 : {}", model.getTitle());
+				}
+			} else if (model.getMode() == Mode.BEAT_7K) {
+				new SPDPConvertModifier().modify(model);
+				assist = Math.max(assist, 1);
+				score = false;
+				forceNoIRSend = true;
+				logger.info("SPtoDP 変換適用 : {}", model.getTitle());
+			}
 		}
 		if(FreqTrainerMenu.isFreqTrainerEnabled() && autoplay.mode == BMSPlayerMode.Mode.PLAY && resource.getCourseBMSModels() == null) {
 			int freq = FreqTrainerMenu.getFreq();
@@ -496,9 +506,11 @@ public class BMSPlayer extends MainState {
 		resource.setUpdateScore(score);
 		resource.setUpdateCourseScore(resource.isUpdateCourseScore() && score);
 		resource.setForceNoIRSend(forceNoIRSend);
-		final int difficulty = resource.getSongdata() != null ? resource.getSongdata().getDifficulty() : 0;
-		resource.getSongdata().setBMSModel(model);
-		resource.getSongdata().setDifficulty(difficulty);
+			final int difficulty = resource.getSongdata() != null ? resource.getSongdata().getDifficulty() : 0;
+			final int songMode = resource.getSongdata() != null ? resource.getSongdata().getMode() : 0;
+			resource.getSongdata().setBMSModel(model);
+			resource.getSongdata().setDifficulty(difficulty);
+			resource.getSongdata().setMode(songMode);
 	}
 
 	public SkinType getSkinType() {
