@@ -79,8 +79,12 @@ public class SPDPConvertModifier extends PatternModifier {
     /** lane → 该 lane 上长键占用的时间区间（[startMicro, endMicro+tail]）。 */
     private final List<long[]>[] lnSpans = new List[16];
 
-    public SPDPConvertModifier() {
+    /** 是否处理 jack（最终扫描，勾选 Process Jack 时）。 */
+    private final boolean processJack;
+
+    public SPDPConvertModifier(boolean processJack) {
         super();
+        this.processJack = processJack;
     }
 
     @Override
@@ -135,6 +139,11 @@ public class SPDPConvertModifier extends PatternModifier {
 
         // 阶段 4：无理皿修复
         fixIrrationalScratch(rnd);
+
+        // 阶段 5：最终 jack 扫描（勾选 Process Jack 时）
+        if (processJack) {
+            fixRemainingJacks();
+        }
 
         logger.info("SPtoDP converted: {} key notes, {} scratches", keys.size(), scratches.size());
     }
@@ -584,6 +593,79 @@ public class SPDPConvertModifier extends PatternModifier {
     /** 拍数 → 微秒（按给定 BPM，附带 20ms 容差）。 */
     private static long beatToMicro(double beat, double bpm) {
         return (long) (beat * 60_000_000.0 / bpm) + TIME_MARGIN_US;
+    }
+
+    /** 阶段 5：最终 jack 扫描。逐个把合成纵连挪到「不生成 jack、不卡死」的位置，挪不动就删进 BGM。 */
+    private void fixRemainingJacks() {
+        for (TimeLine tl : tls) {
+            long t = tl.getMicroTime();
+            double bpm = tl.getBPM();
+            for (int[] lanes : KEY_LANES) {
+                for (int lane : lanes) {
+                    Note n = tl.getNote(lane);
+                    if (n == null || n instanceof LongNote || n instanceof MineNote) {
+                        continue;
+                    }
+                    if (!isJack(n, lane, t, bpm)) {
+                        continue;
+                    }
+                    int target = findJackTarget(tl, n, lane, t, bpm);
+                    if (target >= 0) {
+                        tl.setNote(lane, null);
+                        tl.setNote(target, n);
+                    } else {
+                        tl.setNote(lane, null);
+                        dropToBgm(tl, n);
+                    }
+                }
+            }
+        }
+    }
+
+    /** 该 note 是否在窗口内与同 lane 的其它 note 构成合成纵连（不同 SP 列）。 */
+    private boolean isJack(Note note, int lane, long t, double bpm) {
+        int sp = noteSpKey.getOrDefault(note, -1);
+        long w = beatToMicro(WINDOW_BEAT, bpm);
+        for (TimeLine tl : tls) {
+            Note n = tl.getNote(lane);
+            if (n != null && n != note && Math.abs(tl.getMicroTime() - t) <= w
+                    && !Objects.equals(noteSpKey.get(n), sp)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 找目标 lane：先同一手、再另一只手，要求不生成 jack、不卡死。 */
+    private int findJackTarget(TimeLine tl, Note note, int from, long t, double bpm) {
+        int side = sideOf(from);
+        for (int lane : KEY_LANES[side]) {
+            if (lane == from || tl.getNote(lane) != null || inLnSpan(lane, t)) {
+                continue;
+            }
+            if (hasSyntheticJackAt(note, lane, t, bpm) || createsDeadPairAt(lane, t, bpm)) {
+                continue;
+            }
+            return lane;
+        }
+        for (int lane : KEY_LANES[1 - side]) {
+            if (tl.getNote(lane) != null || inLnSpan(lane, t)) {
+                continue;
+            }
+            if (hasSyntheticJackAt(note, lane, t, bpm) || createsDeadPairAt(lane, t, bpm)) {
+                continue;
+            }
+            return lane;
+        }
+        return -1;
+    }
+
+    /** 丢弃 note：keysound 写到背景音轨（BGM），只丢判定不丢声音。 */
+    private void dropToBgm(TimeLine tl, Note note) {
+        int wav = note.getWav();
+        if (wav >= 0) {
+            tl.addBackGroundNote(new NormalNote(wav));
+        }
     }
 
     private static final class Located {
