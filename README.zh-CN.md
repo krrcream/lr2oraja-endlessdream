@@ -5,7 +5,7 @@
 本仓库是 [LR2oraja \~Endless Dream\~](https://github.com/seraxis/lr2oraja-endlessdream) 的个人定制分支，在完整保留上游全部功能与特性的基础上，整合了 backbeat 支持，并新增了 LDJ 游戏内歌单、训练工具增强等自用功能。
 
 >
-> **项目说明**：这是个人自用维护分支，不提供任何形式的技术支持，提交的 Issue 可能无法得到处理。
+> **项目说明**：这是个人自用维护分支。
 
 ---
 
