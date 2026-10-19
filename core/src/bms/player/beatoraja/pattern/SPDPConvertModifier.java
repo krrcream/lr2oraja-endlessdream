@@ -82,6 +82,10 @@ public class SPDPConvertModifier extends PatternModifier {
     /** 是否处理 jack（最终扫描，勾选 Process Jack 时）。 */
     private final boolean processJack;
 
+    public SPDPConvertModifier() {
+        this(false);
+    }
+
     public SPDPConvertModifier(boolean processJack) {
         super();
         this.processJack = processJack;
