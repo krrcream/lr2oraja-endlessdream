@@ -401,6 +401,15 @@ public class SPDPConvertModifier extends PatternModifier {
 
     private int pickScratchSide(BMSModel model, TimeLine tl, java.util.Random rnd) {
         long t = tl.getMicroTime();
+        // 长音优先：有长音的手不能位移去搓皿，皿放对面
+        boolean leftLn = hasLongNoteHeld(t, 0);
+        boolean rightLn = hasLongNoteHeld(t, 1);
+        if (leftLn && !rightLn) {
+            return 1;
+        }
+        if (rightLn && !leftLn) {
+            return 0;
+        }
         long w = beatToMicro(WINDOW_BEAT, tl.getBPM());
         int[] density = new int[2];
         for (TimeLine other : model.getAllTimeLines()) {
@@ -447,7 +456,7 @@ public class SPDPConvertModifier extends PatternModifier {
         List<Located> irrational = new ArrayList<>();
         for (int lane : IRRATIONAL_KEYS[side]) {
             Note n = tl.getNote(lane);
-            if (n != null && !(n instanceof LongNote) && !(n instanceof MineNote)) {
+            if (n != null && !(n instanceof MineNote)) {
                 irrational.add(new Located(tl, lane, n));
             }
         }
@@ -458,9 +467,8 @@ public class SPDPConvertModifier extends PatternModifier {
         for (Located loc : irrational) {
             int target = pickOppositeLane(tl, t, bpm, side, used, rnd);
             if (target >= 0) {
-                // 规则1：note 挪到对面手
-                tl.setNote(loc.lane, null);
-                tl.setNote(target, loc.note);
+                // 规则1：note 挪到对面手（长音连 start/end 一起挪）
+                moveNote(tl, loc.lane, loc.note, target);
                 used.add(target);
             } else if (!(scratch instanceof LongNote)) {
                 // 规则2：皿挪到对面（对面皿位空且对面无理键全空）
@@ -503,6 +511,42 @@ public class SPDPConvertModifier extends PatternModifier {
             }
         }
         return true;
+    }
+
+    /** 某侧是否有长音正被按住（含长键尾部缓冲）。 */
+    private boolean hasLongNoteHeld(long t, int side) {
+        for (int lane : KEY_LANES[side]) {
+            if (inLnSpan(lane, t)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 挪动 note（长音连 start/end 一起挪到同一 lane）。 */
+    private void moveNote(TimeLine tl, int from, Note note, int to) {
+        tl.setNote(from, null);
+        tl.setNote(to, note);
+        if (note instanceof LongNote ln && !ln.isEnd()) {
+            LongNote end = (LongNote) ln.getPair();
+            if (end != null) {
+                TimeLine endTl = findEndTimeline(end, from);
+                if (endTl != null) {
+                    endTl.setNote(from, null);
+                    endTl.setNote(to, end);
+                }
+            }
+        }
+    }
+
+    /** 找长音尾所在的时间线。 */
+    private TimeLine findEndTimeline(LongNote end, int lane) {
+        for (TimeLine tl : tls) {
+            if (tl.getNote(lane) == end) {
+                return tl;
+            }
+        }
+        return null;
     }
 
     private int sideOf(int lane) {
