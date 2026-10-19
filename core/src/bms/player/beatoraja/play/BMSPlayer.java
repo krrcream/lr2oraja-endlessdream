@@ -248,7 +248,9 @@ public class BMSPlayer extends MainState {
 		resource.setFreqOn(false);
 		resource.setFreqString("");
 		// SP→DP in-memory conversion (改谱：不计分、不提交 IR，显示 assist 灯)
-		if (SPDPConvertMenu.isEnabled() && model.getMode() == Mode.BEAT_7K && autoplay.mode == BMSPlayerMode.Mode.PLAY) {
+		if (SPDPConvertMenu.isEnabled() && model.getMode() == Mode.BEAT_7K
+				&& (autoplay.mode == BMSPlayerMode.Mode.PLAY || autoplay.mode == BMSPlayerMode.Mode.PRACTICE
+						|| autoplay.mode == BMSPlayerMode.Mode.AUTOPLAY)) {
 			new SPDPConvertModifier().modify(model);
 			assist = Math.max(assist, 1);
 			score = false;
