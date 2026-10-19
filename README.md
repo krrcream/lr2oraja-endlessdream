@@ -1,8 +1,8 @@
-# LR2oraja ~Endless Dream~ Personal Build
+# LR2oraja \~Endless Dream\~ Personal Build
 
 [简体中文](README.zh-CN.md)・English
 
-This repository is a personal custom build of [LR2oraja ~Endless Dream~](https://github.com/seraxis/lr2oraja-endlessdream). It keeps every upstream feature intact, integrates backbeat support, and adds personal-use functionality such as the in-game LDJ song list and trainer enhancements.
+This repository is a personal custom build of [LR2oraja \~Endless Dream\~](https://github.com/seraxis/lr2oraja-endlessdream). It keeps every upstream feature intact, integrates backbeat support, and adds personal-use functionality such as the in-game LDJ song list and trainer enhancements.
 
 >
 > **About this project**: This is a personally maintained branch for my own use. No technical support of any kind is provided, and submitted issues may not be handled.
@@ -20,6 +20,10 @@ This repository is a personal custom build of [LR2oraja ~Endless Dream~](https:/
 ---
 
 ## New Features
+
+### BMS SP-DP Converter
+
+Directly in game, you can split an SP chart into a DP chart, or compress a DP chart into an SP chart to play.
 
 ### LDJ In-Game Song List
 
@@ -153,7 +157,7 @@ It is derived from the following upstream projects:
 
 - [beatoraja](https://github.com/exch-bms2/beatoraja)
 - [LR2oraja](https://github.com/wcko87/lr2oraja)
-- [LR2oraja ~Endless Dream~](https://github.com/seraxis/lr2oraja-endlessdream)
+- [LR2oraja \~Endless Dream\~](https://github.com/seraxis/lr2oraja-endlessdream)
 - [The Endless Dream branch with backbeat support](https://github.com/zkldi/lr2oraja-endlessdream/releases)
 
 The upstream of the [iidx2bms personal fork](https://github.com/krrcream/iidx2bms) that the LDJ feature depends on is [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms).
