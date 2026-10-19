@@ -20,6 +20,7 @@ import bms.player.beatoraja.modmenu.GaugeTrainer;
 import bms.player.beatoraja.modmenu.ImGuiNotify;
 import bms.player.beatoraja.modmenu.JudgeTrainer;
 import bms.player.beatoraja.modmenu.RandomTrainer;
+import bms.player.beatoraja.modmenu.SPDPConvertMenu;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 
@@ -251,6 +252,14 @@ public class BMSPlayer extends MainState {
 
 		resource.setFreqOn(false);
 		resource.setFreqString("");
+		// SP→DP in-memory conversion (改谱：不计分、不提交 IR，显示 assist 灯)
+		if (SPDPConvertMenu.isEnabled() && model.getMode() == Mode.BEAT_7K && autoplay.mode == BMSPlayerMode.Mode.PLAY) {
+			new SPDPConvertModifier().modify(model);
+			assist = Math.max(assist, 1);
+			score = false;
+			forceNoIRSend = true;
+			logger.info("SPtoDP 変換適用 : {}", model.getTitle());
+		}
 		if(FreqTrainerMenu.isFreqTrainerEnabled() && autoplay.mode == BMSPlayerMode.Mode.PLAY && resource.getCourseBMSModels() == null) {
 			float freq = FreqTrainerMenu.getFreq();
 
