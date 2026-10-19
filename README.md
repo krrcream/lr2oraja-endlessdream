@@ -5,7 +5,7 @@
 This repository is a personal custom build of [LR2oraja \~Endless Dream\~](https://github.com/seraxis/lr2oraja-endlessdream). It keeps every upstream feature intact, integrates backbeat support, and adds personal-use functionality such as the in-game LDJ song list and trainer enhancements.
 
 >
-> **About this project**: This is a personally maintained branch for my own use. No technical support of any kind is provided, and submitted issues may not be handled.
+> **About this project**: This is a personally maintained branch for my own use.
 
 ---
 
