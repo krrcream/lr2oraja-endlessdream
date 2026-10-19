@@ -25,7 +25,7 @@
 
 可以直接在游戏中把 SP 谱拆分成 DP 谱，也能把 DP 谱压缩成 SP 谱游玩。
 
-### LDJ 游戏内歌单
+### LDJ 游戏内歌单 <sub>（不在dev分支内）</sub>
 
 本功能以独立工具 [iidx2bms（个人分支）](https://github.com/krrcream/iidx2bms) 作为格式转换后端，其上游项目为 [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms)，可将用户本地已有的对应格式谱面实时转换后，集成到游戏选曲界面中直接浏览与游玩。
 
