@@ -25,7 +25,7 @@ This repository is a personal custom build of [LR2oraja \~Endless Dream\~](https
 
 Directly in game, you can split an SP chart into a DP chart, or compress a DP chart into an SP chart to play.
 
-### LDJ In-Game Song List
+### LDJ In-Game Song List <sub>(not in the dev branch)</sub>
 
 This feature uses the standalone tool [iidx2bms (personal fork)](https://github.com/krrcream/iidx2bms) as its format conversion backend, whose upstream project is [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms). It converts the corresponding chart format the user already has locally in real time, and integrates the result into the in-game song select screen for direct browsing and playing.
 
