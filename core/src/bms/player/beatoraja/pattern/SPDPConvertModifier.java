@@ -25,6 +25,9 @@ public class SPDPConvertModifier extends PatternModifier {
     /** 长键结束后锁键缓冲 = 1/4 拍（设计里的 12 tick）。 */
     private static final double LN_TAIL_BEAT = 1.0 / 4.0;
 
+    /** 时间比较容差（μs）：避免取整误差让 16 分间隔的 note 落在窗口边缘而漏判。 */
+    private static final long TIME_MARGIN_US = 20_000L;
+
     /** 每个 note 最多移动次数（防死循环）。 */
     private static final int MAX_MOVE = 2;
 
@@ -578,9 +581,9 @@ public class SPDPConvertModifier extends PatternModifier {
         return -1;
     }
 
-    /** 拍数 → 微秒（按给定 BPM）。 */
+    /** 拍数 → 微秒（按给定 BPM，附带 20ms 容差）。 */
     private static long beatToMicro(double beat, double bpm) {
-        return (long) (beat * 60_000_000.0 / bpm);
+        return (long) (beat * 60_000_000.0 / bpm) + TIME_MARGIN_US;
     }
 
     private static final class Located {
