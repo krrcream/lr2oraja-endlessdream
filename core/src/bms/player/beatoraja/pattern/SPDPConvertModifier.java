@@ -25,6 +25,15 @@ public class SPDPConvertModifier extends PatternModifier {
     /** 长键结束后锁键缓冲 = 1/4 拍（设计里的 12 tick）。 */
     private static final double LN_TAIL_BEAT = 1.0 / 4.0;
 
+    /** 长键尾与同轨下一个 note / 长键头之间必须保留的最小间隔 = 1/4 拍（16 分音符）。 */
+    private static final double LN_END_GAP_BEAT = 1.0 / 4.0;
+
+    /** TimeLine 的 section 以 4/4 的一小节（4 拍）为单位，换算成拍数要乘 4。 */
+    private static final double BEATS_PER_SECTION = 4.0;
+
+    /** section 是 double，边界比较留一点浮点余量。 */
+    private static final double SECTION_EPS = 1e-9;
+
     /** 时间比较容差（μs）：避免取整误差让 16 分间隔的 note 落在窗口边缘而漏判。 */
     private static final long TIME_MARGIN_US = 20_000L;
 
@@ -148,6 +157,9 @@ public class SPDPConvertModifier extends PatternModifier {
         if (processJack) {
             fixRemainingJacks();
         }
+
+        // 阶段 6：长键尾部保底校验（无论是否勾选 Process Jack 都执行）
+        fixLongNoteTails();
 
         logger.info("SPtoDP converted: {} key notes, {} scratches", keys.size(), scratches.size());
     }
@@ -624,6 +636,98 @@ public class SPDPConvertModifier extends PatternModifier {
                 }
             }
         }
+    }
+
+    /**
+     * 阶段 6：长键尾部保底校验（无论是否勾选 Process Jack 都执行）。
+     *
+     * <p>前面的阶段不挪动长键，贪心分配可能让长键尾顶住同轨的下一个 note 或长键头。
+     * 这里做最后兜底：只要长键尾与同轨下一个 note / 长键头的间隔不足 1/4 拍（16 分音符），
+     * 就把长键尾往前收到刚好保留 1/4 拍的位置。下一个 note / 长键头已经压进长键里时同样按它的位置收尾，
+     * 不预先判断这种重叠是否存在（暴力处理）。</p>
+     */
+    private void fixLongNoteTails() {
+        final double minGap = LN_END_GAP_BEAT / BEATS_PER_SECTION;
+        int fixed = 0;
+        for (int lane = 0; lane < 16; lane++) {
+            for (TimeLine tl : tls) {
+                Note n = tl.getNote(lane);
+                if (!(n instanceof LongNote ln) || ln.isEnd()) {
+                    continue;
+                }
+                LongNote end = ln.getPair();
+                if (end == null) {
+                    continue;
+                }
+                TimeLine endTl = findEndTimeline(end, lane);
+                if (endTl == null) {
+                    continue;
+                }
+                double startSection = tl.getSection();
+
+                // 同轨上长键之后的第一个 note 或长键头（长键尾自身不算）。
+                TimeLine nextTl = null;
+                for (TimeLine other : tls) {
+                    if (other.getSection() <= startSection + SECTION_EPS) {
+                        continue;
+                    }
+                    Note otherNote = other.getNote(lane);
+                    if (otherNote == null || otherNote instanceof MineNote) {
+                        continue;
+                    }
+                    if (otherNote instanceof LongNote otherLn && otherLn.isEnd()) {
+                        continue;
+                    }
+                    if (nextTl == null || other.getSection() < nextTl.getSection()) {
+                        nextTl = other;
+                    }
+                }
+                if (nextTl == null) {
+                    continue;
+                }
+
+                double nextSection = nextTl.getSection();
+                double desiredSection = nextSection - minGap;
+                if (endTl.getSection() <= desiredSection + SECTION_EPS) {
+                    continue;
+                }
+
+                // 收到 desiredSection 之前最后一个空位。若那样会把长键收到头（下一个事件离长键头
+                // 不足 1/4 拍），退一步取 nextTl 之前最后一个空位，能收多少收多少。
+                TimeLine target = latestEmptySlot(lane, startSection, desiredSection);
+                if (target == null) {
+                    target = latestEmptySlot(lane, startSection, nextSection - SECTION_EPS);
+                }
+                if (target == null) {
+                    continue;
+                }
+
+                endTl.setNote(lane, null);
+                target.setNote(lane, end);
+                fixed++;
+            }
+        }
+        if (fixed > 0) {
+            logger.info("SPtoDP long note tails shortened: {}", fixed);
+        }
+    }
+
+    /** 在 (afterSection, upToSection] 内找该 lane 上最后一个空的时间线。 */
+    private TimeLine latestEmptySlot(int lane, double afterSection, double upToSection) {
+        TimeLine target = null;
+        for (TimeLine cand : tls) {
+            double cs = cand.getSection();
+            if (cs <= afterSection + SECTION_EPS || cs > upToSection + SECTION_EPS) {
+                continue;
+            }
+            if (cand.getNote(lane) != null) {
+                continue;
+            }
+            if (target == null || cs > target.getSection()) {
+                target = cand;
+            }
+        }
+        return target;
     }
 
     /** 该 note 是否在窗口内与同 lane 的其它 note 构成合成纵连（不同 SP 列）。 */
