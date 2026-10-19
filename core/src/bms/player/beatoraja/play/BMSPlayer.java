@@ -260,7 +260,7 @@ public class BMSPlayer extends MainState {
 					logger.info("DPtoSP 変換適用 : {}", model.getTitle());
 				}
 			} else if (model.getMode() == Mode.BEAT_7K) {
-				new SPDPConvertModifier().modify(model);
+				new SPDPConvertModifier(SPDPConvertMenu.isProcessJack()).modify(model);
 				assist = Math.max(assist, 1);
 				score = false;
 				forceNoIRSend = true;
