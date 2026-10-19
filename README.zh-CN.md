@@ -1,8 +1,8 @@
-# LR2oraja ~Endless Dream~ 个人修改版
+# LR2oraja \~Endless Dream\~ 个人修改版
 
 简体中文・[English](README.md)
 
-本仓库是 [LR2oraja ~Endless Dream~](https://github.com/seraxis/lr2oraja-endlessdream) 的个人定制分支，在完整保留上游全部功能与特性的基础上，整合了 backbeat 支持，并新增了 LDJ 游戏内歌单、训练工具增强等自用功能。
+本仓库是 [LR2oraja \~Endless Dream\~](https://github.com/seraxis/lr2oraja-endlessdream) 的个人定制分支，在完整保留上游全部功能与特性的基础上，整合了 backbeat 支持，并新增了 LDJ 游戏内歌单、训练工具增强等自用功能。
 
 >
 > **项目说明**：这是个人自用维护分支，不提供任何形式的技术支持，提交的 Issue 可能无法得到处理。
@@ -20,6 +20,10 @@
 ---
 
 ## 新增特性
+
+### BMS SP-DP 转换器
+
+可以直接在游戏中把 SP 谱拆分成 DP 谱，也能把 DP 谱压缩成 SP 谱游玩。
 
 ### LDJ 游戏内歌单
 
@@ -153,7 +157,7 @@ beatoraja/
 
 - [beatoraja](https://github.com/exch-bms2/beatoraja)
 - [LR2oraja](https://github.com/wcko87/lr2oraja)
-- [LR2oraja ~Endless Dream~](https://github.com/seraxis/lr2oraja-endlessdream)
+- [LR2oraja \~Endless Dream\~](https://github.com/seraxis/lr2oraja-endlessdream)
 - [带 backbeat 支持的 Endless Dream 分支](https://github.com/zkldi/lr2oraja-endlessdream/releases)
 
 LDJ 功能依赖的 [iidx2bms 个人分支](https://github.com/krrcream/iidx2bms) 上游为 [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms)。
