@@ -38,6 +38,7 @@ public class ImGuiRenderer {
     private static InputProcessor tmpProcessor;
 
     private static ImBoolean SHOW_MOD_MENU = new ImBoolean(false);
+    private static ImBoolean SHOW_SPDP_CONVERT = new ImBoolean(false);
     private static ImBoolean SHOW_RANDOM_TRAINER = new ImBoolean(false);
     private static ImBoolean SHOW_FREQ_PLUS = new ImBoolean(false);
     private static ImBoolean SHOW_JUDGE_TRAINER = new ImBoolean(false);
@@ -113,6 +114,7 @@ public class ImGuiRenderer {
         if (SHOW_MOD_MENU.get()) {
             ImGui.begin("Endless Dream", ImGuiWindowFlags.AlwaysAutoResize);
 
+            ImGui.checkbox("Show SPDP Convert Window", SHOW_SPDP_CONVERT);
             ImGui.checkbox("Show Rate Modifier Window", SHOW_FREQ_PLUS);
             ImGui.checkbox("Show Random Trainer Window", SHOW_RANDOM_TRAINER);
             ImGui.checkbox("Show Judge Trainer Window", SHOW_JUDGE_TRAINER);
@@ -127,6 +129,9 @@ public class ImGuiRenderer {
             }
             ImGui.checkbox("Show Misc Setting Window", SHOW_MISC_SETTING);
 
+            if (SHOW_SPDP_CONVERT.get()) {
+                SPDPConvertMenu.show(SHOW_SPDP_CONVERT);
+            }
             if (SHOW_FREQ_PLUS.get()) {
                 FreqTrainerMenu.show(SHOW_FREQ_PLUS);
             }
