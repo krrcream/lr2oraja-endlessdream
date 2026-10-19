@@ -10,8 +10,8 @@ import java.util.*;
  * SP→DP 谱面转换（内存转换，不落盘）。
  *
  * <p>把一张 8-lane 的 SP 谱（BEAT_7K）转换成 16-lane 的 DP 谱（BEAT_14K）。
- * 每个 SP 键映射到一对相邻 DP 键（主位/副位），按"左是左、右是右"均匀展开；
- * 死卡（同指上下排对）与合成纵连在 1/3 拍窗口内被检测并就近修复。</p>
+ * 每个 SP 键对应一个候选 DP lane 窗口，阶段1 在窗口内随机挑一个未被同 tick 占用的位置，把 7 键均匀摊到 14 轨；
+ * 阶段2 再检测并就近修复死卡（同指上下排对）与合成纵连。</p>
  *
  * <p>转换结果按改谱处理：不计分、不提交 IR，但正常显示灯（由 BMSPlayer 设置 assist/score）。</p>
  */
@@ -28,13 +28,21 @@ public class SPDPConvertModifier extends PatternModifier {
     /** 每个 note 最多移动次数（防死循环）。 */
     private static final int MAX_MOVE = 2;
 
-    /** SP 键 lane(0..6) → 主位 DP lane。SP1 最左 → 1P7(lane6)，SP7 最右 → 2P6(lane13)。 */
-    private static final int[] PRIMARY = {6, 4, 2, 0, 9, 11, 13};
+    /**
+     * SP 键 lane(0..6) → 候选 DP lane 窗口（物理位置 §3 的 0..13 左→右换算成 BMS lane）。
+     * 阶段1 在窗口内随机挑一个未被同 tick 占用的位置，把 7 键均匀摊到 14 轨。
+     */
+    private static final int[][] WINDOWS = {
+            {6, 5, 4},          // SP1：物理 0,1,2 → 1P7,1P6,1P5
+            {5, 4, 3, 2},       // SP2：物理 1,2,3,4 → 1P6,1P5,1P4,1P3
+            {3, 2, 1, 0},       // SP3：物理 3,4,5,6 → 1P4,1P3,1P2,1P1
+            {1, 0, 8, 9},       // SP4：物理 5,6,7,8 → 1P2,1P1,2P1,2P2
+            {8, 9, 10, 11},     // SP5：物理 7,8,9,10 → 2P1,2P2,2P3,2P4
+            {10, 11, 12, 13},   // SP6：物理 9,10,11,12 → 2P3,2P4,2P5,2P6
+            {12, 13, 14},       // SP7：物理 11,12,13 → 2P5,2P6,2P7
+    };
 
-    /** SP 键 lane(0..6) → 副位 DP lane。 */
-    private static final int[] SECONDARY = {5, 3, 1, 8, 10, 12, 14};
-
-    /** 每侧死卡对（同指上下排：食指{2,3}、无名指{5,6}），用 lane 表示。1P {1,2}/{4,5}，2P {9,10}/{12,13}。 */
+    /** 每侧死卡对，用 BMS lane 表示。1P {1,2}/{4,5}，2P {9,10}/{12,13}。 */
     private static final int[][][] DEAD_PAIRS = {
             {{1, 2}, {4, 5}},
             {{9, 10}, {12, 13}},
@@ -44,6 +52,12 @@ public class SPDPConvertModifier extends PatternModifier {
     private static final int[][] KEY_LANES = {
             {0, 1, 2, 3, 4, 5, 6},
             {8, 9, 10, 11, 12, 13, 14},
+    };
+
+    /** 无理皿的无理键 lane：皿在侧时这些键与皿冲突。左侧 1P4..1P7，右侧 2P1..2P4。 */
+    private static final int[][] IRRATIONAL_KEYS = {
+            {3, 4, 5, 6},       // 1P4,1P5,1P6,1P7
+            {8, 9, 10, 11},     // 2P1,2P2,2P3,2P4
     };
 
     /** 下排键 lane（键号 1,3,5,7）：1P {0,2,4,6}，2P {8,10,12,14}。 */
@@ -56,7 +70,6 @@ public class SPDPConvertModifier extends PatternModifier {
     }
 
     private final Map<Note, Integer> noteSpKey = new HashMap<>();
-    private final Map<Note, Integer> noteLane = new HashMap<>();
     private final Map<Note, Integer> moveCount = new HashMap<>();
 
     private TimeLine[] tls;
@@ -79,7 +92,6 @@ public class SPDPConvertModifier extends PatternModifier {
 
         this.tls = model.getAllTimeLines();
         noteSpKey.clear();
-        noteLane.clear();
         moveCount.clear();
 
         // 收集 SP note（lane 0..7：键 0..6，皿 7）
@@ -102,48 +114,53 @@ public class SPDPConvertModifier extends PatternModifier {
         }
         model.setMode(Mode.BEAT_14K);
 
-        // 阶段 1：键 note 基准分配
+        // 阶段 1：键 note 在候选窗口内随机分配（同 tick 撞位则排除重选）
         long[] lnLockUntil = new long[16];
         Map<LongNote, Integer> lnEndLane = new HashMap<>();
+        java.util.Random rnd = new java.util.Random();
         for (SrcNote s : keys) {
-            int dpLane = assignLane(s, lnLockUntil, lnEndLane);
+            int dpLane = assignRandomLane(s, rnd, lnLockUntil, lnEndLane);
             s.tl.setNote(dpLane, s.note);
             noteSpKey.put(s.note, s.spLane);
-            noteLane.put(s.note, dpLane);
         }
 
         // 阶段 2：死卡 + 合成纵连修复
         fixCollisions();
 
         // 阶段 3：皿放置（按窗口密度选边）
-        placeScratches(scratches, model);
+        placeScratches(scratches, model, rnd);
+
+        // 阶段 4：无理皿修复
+        fixIrrationalScratch(rnd);
 
         logger.info("SPtoDP converted: {} key notes, {} scratches", keys.size(), scratches.size());
     }
 
-    /** 阶段 1 单 note 分配：主位优先，被长键锁定则副位。长键 start 选定后 end 跟随同 lane。 */
-    private int assignLane(SrcNote s, long[] lnLockUntil, Map<LongNote, Integer> lnEndLane) {
-        int primary = PRIMARY[s.spLane];
-        int secondary = SECONDARY[s.spLane];
+    /** 阶段 1 单 note 分配：在候选窗口内随机挑一个未被同 tick 占用、未被长音锁定的 lane。 */
+    private int assignRandomLane(SrcNote s, java.util.Random rnd, long[] lnLockUntil, Map<LongNote, Integer> lnEndLane) {
+        int[] window = WINDOWS[s.spLane];
         long t = s.tl.getMicroTime();
 
-        if (s.note instanceof LongNote ln) {
-            if (!ln.isEnd()) {
-                int lane = (lnLockUntil[primary] <= t) ? primary
-                        : (lnLockUntil[secondary] <= t) ? secondary : primary;
-                long lnEndMicro = ln.getPair() != null ? ln.getPair().getMicroTime() : t;
-                long tailUs = beatToMicro(LN_TAIL_BEAT, s.tl.getBPM());
-                lnLockUntil[lane] = Math.max(lnLockUntil[lane], lnEndMicro + tailUs);
-                lnEndLane.put(ln.getPair(), lane);
-                return lane;
-            } else {
-                Integer l = lnEndLane.get(ln);
-                return (l != null) ? l : primary;
-            }
-        } else {
-            return (lnLockUntil[primary] <= t) ? primary
-                    : (lnLockUntil[secondary] <= t) ? secondary : primary;
+        if (s.note instanceof LongNote ln && ln.isEnd()) {
+            Integer lane = lnEndLane.get(ln);
+            return (lane != null) ? lane : window[0];
         }
+
+        List<Integer> free = new ArrayList<>();
+        for (int lane : window) {
+            if (s.tl.getNote(lane) == null && lnLockUntil[lane] <= t) {
+                free.add(lane);
+            }
+        }
+        int lane = free.isEmpty() ? window[rnd.nextInt(window.length)] : free.get(rnd.nextInt(free.size()));
+
+        if (s.note instanceof LongNote ln) {
+            long lnEndMicro = ln.getPair() != null ? ln.getPair().getMicroTime() : t;
+            long tailUs = beatToMicro(LN_TAIL_BEAT, s.tl.getBPM());
+            lnLockUntil[lane] = Math.max(lnLockUntil[lane], lnEndMicro + tailUs);
+            lnEndLane.put(ln.getPair(), lane);
+        }
+        return lane;
     }
 
     /** 阶段 2 主循环：反复扫描直到无修复。 */
@@ -245,7 +262,6 @@ public class SPDPConvertModifier extends PatternModifier {
             if (target >= 0) {
                 cur.tl.setNote(cur.lane, null);
                 cur.tl.setNote(target, n);
-                noteLane.put(n, target);
                 moveCount.merge(n, 1, Integer::sum);
                 return true;
             }
@@ -253,7 +269,7 @@ public class SPDPConvertModifier extends PatternModifier {
         return false;
     }
 
-    /** 分档搜索目标 lane：同侧同排 → 同侧跨排 → 撤销④ → 跨手。每档内按 dpIndex 距离升序。 */
+    /** 分档搜索目标 lane：同侧同排 → 同侧跨排 → 同侧任意 → 跨手。每档内按 dpIndex 距离升序。 */
     private int findTarget(TimeLine tl, Note note, int from) {
         long t = tl.getMicroTime();
         double bpm = tl.getBPM();
@@ -261,24 +277,23 @@ public class SPDPConvertModifier extends PatternModifier {
         boolean bottom = BOTTOM_ROW[from];
 
         for (int lane : sameSideLanes(side, bottom, from)) {
-            if (legal(tl, note, lane, t, bpm, true)) {
+            if (legal(tl, note, lane, t, bpm)) {
                 return lane;
             }
         }
         for (int lane : sameSideLanes(side, !bottom, from)) {
-            if (legal(tl, note, lane, t, bpm, true)) {
+            if (legal(tl, note, lane, t, bpm)) {
                 return lane;
             }
         }
-        // 撤销④：同侧任意
         for (int lane : sameSideLanes(side, null, from)) {
-            if (legal(tl, note, lane, t, bpm, false)) {
+            if (legal(tl, note, lane, t, bpm)) {
                 return lane;
             }
         }
         // 跨手
         for (int lane : keyLanesSorted(1 - side, from)) {
-            if (legal(tl, note, lane, t, bpm, false)) {
+            if (legal(tl, note, lane, t, bpm)) {
                 return lane;
             }
         }
@@ -309,7 +324,7 @@ public class SPDPConvertModifier extends PatternModifier {
         return list;
     }
 
-    private boolean legal(TimeLine tl, Note note, int cand, long t, double bpm, boolean respectOrder) {
+    private boolean legal(TimeLine tl, Note note, int cand, long t, double bpm) {
         if (tl.getNote(cand) != null) {
             return false; // 1. 目标位置该 tick 无 note
         }
@@ -321,9 +336,6 @@ public class SPDPConvertModifier extends PatternModifier {
         }
         if (createsDeadPairAt(cand, t, bpm)) {
             return false; // 4. 不产生新死卡对
-        }
-        if (respectOrder && violatesOrder(note, cand)) {
-            return false; // 5. ④ 左右顺序
         }
         return true;
     }
@@ -364,46 +376,22 @@ public class SPDPConvertModifier extends PatternModifier {
         return false;
     }
 
-    /** ④ 左右顺序：spKey 更小的 note 其 dpIndex 必须更小。 */
-    private boolean violatesOrder(Note note, int cand) {
-        int sp = noteSpKey.getOrDefault(note, -1);
-        int candDp = dpIndex(cand);
-        for (Map.Entry<Note, Integer> e : noteSpKey.entrySet()) {
-            Note other = e.getKey();
-            if (other == note) {
-                continue;
-            }
-            Integer otherLane = noteLane.get(other);
-            if (otherLane == null) {
-                continue;
-            }
-            int otherDp = dpIndex(otherLane);
-            if (e.getValue() < sp && otherDp >= candDp) {
-                return true;
-            }
-            if (e.getValue() > sp && otherDp <= candDp) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** 阶段 3：皿按窗口密度选边（1P=lane7，2P=lane15）。 */
-    private void placeScratches(List<SrcNote> scratches, BMSModel model) {
+    /** 阶段 3：皿按窗口密度选边（1P=lane7，2P=lane15），密度相等时随机。 */
+    private void placeScratches(List<SrcNote> scratches, BMSModel model, java.util.Random rnd) {
         int prevSide = 0;
         Map<LongNote, Integer> lnSide = new HashMap<>();
         for (SrcNote s : scratches) {
             int side;
             if (s.note instanceof LongNote ln) {
                 if (!ln.isEnd()) {
-                    side = pickScratchSide(model, s.tl);
+                    side = pickScratchSide(model, s.tl, rnd);
                     lnSide.put(ln.getPair(), side);
                 } else {
                     Integer p = lnSide.get(ln);
                     side = (p != null) ? p : prevSide;
                 }
             } else {
-                side = pickScratchSide(model, s.tl);
+                side = pickScratchSide(model, s.tl, rnd);
             }
             int lane = (side == 0) ? 7 : 15;
             s.tl.setNote(lane, s.note);
@@ -411,7 +399,7 @@ public class SPDPConvertModifier extends PatternModifier {
         }
     }
 
-    private int pickScratchSide(BMSModel model, TimeLine tl) {
+    private int pickScratchSide(BMSModel model, TimeLine tl, java.util.Random rnd) {
         long t = tl.getMicroTime();
         long w = beatToMicro(WINDOW_BEAT, tl.getBPM());
         int[] density = new int[2];
@@ -430,7 +418,91 @@ public class SPDPConvertModifier extends PatternModifier {
                 }
             }
         }
-        return (density[0] <= density[1]) ? 0 : 1;
+        if (density[0] < density[1]) {
+            return 0;
+        }
+        if (density[1] < density[0]) {
+            return 1;
+        }
+        return rnd.nextInt(2);
+    }
+
+    /** 阶段 4：无理皿修复。皿与同侧无理键的 note 冲突时，优先把 note 挪到对面手，挪不了就把皿挪到对面。 */
+    private void fixIrrationalScratch(java.util.Random rnd) {
+        for (TimeLine tl : tls) {
+            long t = tl.getMicroTime();
+            double bpm = tl.getBPM();
+            resolveIrrationalSide(tl, t, bpm, 0, rnd);
+            resolveIrrationalSide(tl, t, bpm, 1, rnd);
+        }
+    }
+
+    /** 处理一侧的无理皿：规则1 挪 note，规则2 挪皿。 */
+    private void resolveIrrationalSide(TimeLine tl, long t, double bpm, int side, java.util.Random rnd) {
+        int scratchLane = (side == 0) ? 7 : 15;
+        Note scratch = tl.getNote(scratchLane);
+        if (scratch == null) {
+            return;
+        }
+        List<Located> irrational = new ArrayList<>();
+        for (int lane : IRRATIONAL_KEYS[side]) {
+            Note n = tl.getNote(lane);
+            if (n != null && !(n instanceof LongNote) && !(n instanceof MineNote)) {
+                irrational.add(new Located(tl, lane, n));
+            }
+        }
+        if (irrational.isEmpty()) {
+            return;
+        }
+        Set<Integer> used = new HashSet<>();
+        for (Located loc : irrational) {
+            int target = pickOppositeLane(tl, t, bpm, side, used, rnd);
+            if (target >= 0) {
+                // 规则1：note 挪到对面手
+                tl.setNote(loc.lane, null);
+                tl.setNote(target, loc.note);
+                used.add(target);
+            } else if (!(scratch instanceof LongNote)) {
+                // 规则2：皿挪到对面（对面皿位空且对面无理键全空）
+                int otherScratch = (side == 0) ? 15 : 7;
+                if (tl.getNote(otherScratch) == null && oppositeIrrationalFree(tl, side)) {
+                    tl.setNote(scratchLane, null);
+                    tl.setNote(otherScratch, scratch);
+                    break;
+                }
+            }
+        }
+    }
+
+    /** 在对面手的键里随机挑一个「不占用、不生成卡死、没被选过」的 lane。 */
+    private int pickOppositeLane(TimeLine tl, long t, double bpm, int side, Set<Integer> used, java.util.Random rnd) {
+        List<Integer> candidates = new ArrayList<>();
+        for (int lane : KEY_LANES[1 - side]) {
+            if (tl.getNote(lane) != null) {
+                continue;
+            }
+            if (used.contains(lane)) {
+                continue;
+            }
+            if (createsDeadPairAt(lane, t, bpm)) {
+                continue;
+            }
+            candidates.add(lane);
+        }
+        if (candidates.isEmpty()) {
+            return -1;
+        }
+        return candidates.get(rnd.nextInt(candidates.size()));
+    }
+
+    /** 对面手的无理键是否全空（皿挪过去后不会生成新的无理皿）。 */
+    private boolean oppositeIrrationalFree(TimeLine tl, int side) {
+        for (int lane : IRRATIONAL_KEYS[1 - side]) {
+            if (tl.getNote(lane) != null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private int sideOf(int lane) {

@@ -42,20 +42,18 @@ class SPDPConvertModifierTest {
     }
 
     @Test
-    void mapsSpKeysToPrimaryLanes() {
+    void fullChordNotesStayDistinct() {
+        // 全 7 键同 tick：随机窗口 + 撞位重选后，7 个 note 应各占一个不同 lane（无同 tick 碰撞）
         BMSModel model = spModel(0, 1, 2, 3, 4, 5, 6);
         new SPDPConvertModifier().modify(model);
 
         TimeLine tl = model.getAllTimeLines()[0];
-        // SP1→1P7(lane6) SP2→1P5(lane4) SP3→1P3(lane2) SP4→1P1(lane0)
-        // SP5→2P2(lane9) SP6→2P4(lane11) SP7→2P6(lane13)
-        assertEquals(6, laneOfWav(tl, 0));
-        assertEquals(4, laneOfWav(tl, 1));
-        assertEquals(2, laneOfWav(tl, 2));
-        assertEquals(0, laneOfWav(tl, 3));
-        assertEquals(9, laneOfWav(tl, 4));
-        assertEquals(11, laneOfWav(tl, 5));
-        assertEquals(13, laneOfWav(tl, 6));
+        java.util.HashSet<Integer> used = new java.util.HashSet<>();
+        for (int sp = 0; sp < 7; sp++) {
+            int lane = laneOfWav(tl, sp);
+            assertTrue(lane >= 0, "SP" + (sp + 1) + " 的 note 丢失了");
+            assertTrue(used.add(lane), "两个 note 撞到同一 lane " + lane);
+        }
     }
 
     @Test
@@ -92,12 +90,14 @@ class SPDPConvertModifierTest {
     }
 
     @Test
-    void leavesSingleLaneKeyNoteOnOriginalPrimary() {
-        // 单个键 note 无碰撞，应落到主位，且原 SP lane 被清空
+    void placesSingleKeyNoteInItsWindow() {
+        // 单个键 note 无碰撞，应落在其候选窗口内，且原 SP lane 被清空
         BMSModel model = spModel(3);
         new SPDPConvertModifier().modify(model);
         TimeLine tl = model.getAllTimeLines()[0];
-        assertEquals(0, laneOfWav(tl, 3)); // SP4 主位 1P1(lane0)
-        assertNull(tl.getNote(3));          // 原 SP lane3 不再有 note
+        int lane = laneOfWav(tl, 3);
+        assertTrue(lane == 1 || lane == 0 || lane == 8 || lane == 9,
+                "SP4 应落在 {1,0,8,9} 内，实际 lane " + lane);
+        assertNull(tl.getNote(3)); // 原 SP lane3 不再有 note
     }
 }
