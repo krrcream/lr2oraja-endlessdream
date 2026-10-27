@@ -25,7 +25,7 @@
 
 可以直接在游戏中把 SP 谱拆分成 DP 谱，也能把 DP 谱压缩成 SP 谱游玩。
 
-### LDJ 游戏内歌单 <sub>（不在dev分支内）</sub>
+### LDJ 游戏内歌单 <sub>（不在dev分支内，请用LDJPlus分支，LDJ分支已不更新）</sub>
 
 本功能以独立工具 [iidx2bms（个人分支）](https://github.com/krrcream/iidx2bms) 作为格式转换后端，其上游项目为 [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms)，可将用户本地已有的对应格式谱面实时转换后，集成到游戏选曲界面中直接浏览与游玩。
 
@@ -57,9 +57,10 @@
 
 ### 前置准备
 
-1. 准备好 beatoraja 0.8.8 基础安装环境。
-   - 若目录中没有 `config_sys.json`，先启动一次游戏再关闭以生成该文件。
-2. 单独克隆 [iidx2bms](https://github.com/krrcream/iidx2bms) 到任意目录，确保目录内包含 `conversion/conversion.py` 与 `music_data/music_data.json`。常规版用 `orajaroot` 分支，不落盘音频中间产物版用 `orajaroot-plus` 分支。
+1. 下载 beatoraja 0.8.8 本体。
+2. 克隆本仓库所需的分支（LDJ 功能请用 `LDJPlus` 分支），构建出 jar，并用它替换 beatoraja 0.8.8 目录下的 `beatoraja.jar`。
+3. 若目录中没有 `config_sys.json`，先启动一次游戏再关闭以生成该文件。
+4. 单独克隆 [iidx2bms](https://github.com/krrcream/iidx2bms) 到任意目录，确保目录内包含 `conversion/conversion.py` 与 `music_data/music_data.json`。常规版用 `orajaroot` 分支，不落盘音频中间产物版用 `orajaroot-plus` 分支。
 ### 配置项说明
 
 编辑游戏目录下的 `config_sys.json`，添加以下配置项：

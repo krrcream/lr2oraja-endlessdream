@@ -25,7 +25,7 @@ This repository is a personal custom build of [LR2oraja \~Endless Dream\~](https
 
 Directly in game, you can split an SP chart into a DP chart, or compress a DP chart into an SP chart to play.
 
-### LDJ In-Game Song List <sub>(not in the dev branch)</sub>
+### LDJ In-Game Song List <sub>(not in the dev branch; use the LDJPlus branch, the LDJ branch is no longer updated)</sub>
 
 This feature uses the standalone tool [iidx2bms (personal fork)](https://github.com/krrcream/iidx2bms) as its format conversion backend, whose upstream project is [Glebsin/iidx2bms](https://github.com/Glebsin/iidx2bms). It converts the corresponding chart format the user already has locally in real time, and integrates the result into the in-game song select screen for direct browsing and playing.
 
@@ -57,9 +57,10 @@ Merged the [Endless Dream branch maintained by zkldi with backbeat support](http
 
 ### Prerequisites
 
-1. Have a working base beatoraja 0.8.8 installation.
-   - If there is no `config_sys.json` in the directory, launch the game once and close it to generate the file.
-2. Separately clone [iidx2bms](https://github.com/krrcream/iidx2bms) into any directory, and make sure it contains `conversion/conversion.py` and `music_data/music_data.json`. The standard version uses the `orajaroot` branch, and the no-audio-intermediate-product version uses the `orajaroot-plus` branch.
+1. Download the base beatoraja 0.8.8 release.
+2. Clone the branch you need from this repository (use the `LDJPlus` branch for the LDJ feature), build the jar, and use it to replace `beatoraja.jar` in the beatoraja 0.8.8 directory.
+3. If there is no `config_sys.json` in the directory, launch the game once and close it to generate the file.
+4. Separately clone [iidx2bms](https://github.com/krrcream/iidx2bms) into any directory, and make sure it contains `conversion/conversion.py` and `music_data/music_data.json`. The standard version uses the `orajaroot` branch, and the no-audio-intermediate-product version uses the `orajaroot-plus` branch.
 ### Configuration Options
 
 Edit `config_sys.json` in the game directory and add the following options:
