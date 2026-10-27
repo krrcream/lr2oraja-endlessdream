@@ -60,7 +60,7 @@
 1. 下载 beatoraja 0.8.8 本体。
 2. 克隆本仓库所需的分支（LDJ 功能请用 `LDJPlus` 分支），构建出 jar，并用它替换 beatoraja 0.8.8 目录下的 `beatoraja.jar`。
 3. 若目录中没有 `config_sys.json`，先启动一次游戏再关闭以生成该文件。
-4. 单独克隆 [iidx2bms](https://github.com/krrcream/iidx2bms) 到任意目录，确保目录内包含 `conversion/conversion.py` 与 `music_data/music_data.json`。常规版用 `orajaroot` 分支，不落盘音频中间产物版用 `orajaroot-plus` 分支。
+4. 单独克隆 [iidx2bms](https://github.com/krrcream/iidx2bms) 的 `orajaroot-plus` 分支到任意目录，确保目录内包含 `conversion/conversion.py` 与 `music_data/music_data.json`。常规版用 `orajaroot` 分支，不落盘音频中间产物版用 `orajaroot-plus` 分支。
 ### 配置项说明
 
 编辑游戏目录下的 `config_sys.json`，添加以下配置项：
