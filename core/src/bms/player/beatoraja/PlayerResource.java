@@ -443,9 +443,14 @@ public final class PlayerResource {
 		if (model != null) model = loadBMSModel(model.getRandom());
 		final String name = tablename;
 		final String lev = tablelevel;
+		// clear() 会把 fromLDJ 复位，而重试（失败重试、结算画面重打、练习循环）
+		// 不再经过 MusicSelector.readChart，所以这里要沿用本次读取的来源，
+		// 否则成绩会被写进 score.db 而不是 ldjscore.db
+		final boolean ldj = fromLDJ;
 		clear();
 		tablename = name;
 		tablelevel = lev;
+		fromLDJ = ldj;
 	}
 
 	public FloatArray[] getGauge() {

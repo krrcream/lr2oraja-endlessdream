@@ -64,6 +64,14 @@ public final class PlayDataAccessor {
 	 * スコアデータログアクセサ
 	 */
 	private ScoreDataLogDatabaseAccessor scoredatalogdb;
+	/**
+	 * LDJ 谱面的过程记录数据库访问器
+	 */
+	private ScoreLogDatabaseAccessor ldjscorelogdb;
+	/**
+	 * LDJ 谱面的成绩过程日志数据库访问器
+	 */
+	private ScoreDataLogDatabaseAccessor ldjscoredatalogdb;
 
 
 	private static final String[] replay = { "", "C", "H" };
@@ -76,10 +84,12 @@ public final class PlayDataAccessor {
 			Class.forName("org.sqlite.JDBC");
 			scoredb = new ScoreDatabaseAccessor(playerpath + File.separatorChar + player + File.separatorChar + "score.db");
 			scoredb.createTable();
-			ldjscoredb = new ScoreDatabaseAccessor(getLDJScoreDatabasePath(config));
+			ldjscoredb = new ScoreDatabaseAccessor(getLDJDatabasePath(config, "ldjscore.db"));
 			ldjscoredb.createTable();
 			scorelogdb = new ScoreLogDatabaseAccessor(playerpath + File.separatorChar + player + File.separatorChar + "scorelog.db");
 			scoredatalogdb = new ScoreDataLogDatabaseAccessor(playerpath + File.separatorChar + player + File.separatorChar + "scoredatalog.db");
+			ldjscorelogdb = new ScoreLogDatabaseAccessor(getLDJDatabasePath(config, "LDJscorelog.db"));
+			ldjscoredatalogdb = new ScoreDataLogDatabaseAccessor(getLDJDatabasePath(config, "LDJscoredatalog.db"));
 			// Share scoredb to LR2IR
 			LR2IRAccessor.setScoreDatabaseAccessor(scoredb);
 		} catch (ClassNotFoundException e) {
@@ -90,11 +100,13 @@ public final class PlayDataAccessor {
 	}
 
 	/**
-	 * 返回 LDJ 分数数据库的路径
+	 * 返回 LDJ 相关数据库的路径
 	 * 若设置了 Config.getLDJ_Sources()，则置于该目录下
 	 * 未设置时置于与 score.db 相同的目录(不放在 OS 的临时区域)
+	 *
+	 * @param filename 数据库文件名，如 ldjscore.db / LDJscorelog.db
 	 */
-	private static String getLDJScoreDatabasePath(Config config) {
+	private static String getLDJDatabasePath(Config config, String filename) {
 		String sources = config.getLDJ_Sources();
 		if (sources != null && !sources.isEmpty()) {
 			try {
@@ -102,9 +114,9 @@ public final class PlayDataAccessor {
 			} catch (IOException e) {
 				logger.warn("LDJ_Sourcesディレクトリの準備に失敗:{}", e.getMessage());
 			}
-			return sources + File.separatorChar + "ldjscore.db";
+			return sources + File.separatorChar + filename;
 		}
-		return config.getPlayerpath() + File.separatorChar + config.getPlayername() + File.separatorChar + "ldjscore.db";
+		return config.getPlayerpath() + File.separatorChar + config.getPlayername() + File.separatorChar + filename;
 	}
 
 	public PlayerData readPlayerData() {
@@ -299,6 +311,9 @@ public final class PlayDataAccessor {
 	 */
 	public void writeScoreData(ScoreData newscore, BMSModel model, int lnmode, boolean updateScore, boolean ldj) {
 		ScoreDatabaseAccessor db = ldj ? ldjscoredb : scoredb;
+		// 过程记录同样按来源分流，LDJ 谱面不再写进原生谱面的 scorelog / scoredatalog
+		ScoreLogDatabaseAccessor logdb = ldj ? ldjscorelogdb : scorelogdb;
+		ScoreDataLogDatabaseAccessor datalogdb = ldj ? ldjscoredatalogdb : scoredatalogdb;
 		String hash = model.getSHA256();
 		if (newscore == null) {
 			return;
@@ -369,13 +384,13 @@ public final class PlayDataAccessor {
 		score.setDate(Calendar.getInstance(TimeZone.getDefault()).getTimeInMillis() / 1000L);
 		score.setScorehash(getScoreHash(score));
 		db.setScoreData(score);
-		if (log.getSha256() != null && scorelogdb != null) {
+		if (log.getSha256() != null && logdb != null) {
 			log.setMode(score.getMode());
 			log.setDate(score.getDate());
-			scorelogdb.setScoreLog(log);
+			logdb.setScoreLog(log);
 		}
 
-		if (scoredatalogdb != null) {
+		if (datalogdb != null) {
 			StringBuilder newScoresb = new StringBuilder();
 			for(SongTrophy trophy : newTrophies) {
 				newScoresb.append(trophy.character);
@@ -387,7 +402,7 @@ public final class PlayDataAccessor {
 			newscore.setClearcount(score.getClearcount());
 			newscore.setScorehash(getScoreHash(newscore));
 
-			scoredatalogdb.setScoreDataLog(newscore);
+			datalogdb.setScoreDataLog(newscore);
 		}
 
 		// 楽曲のプレイ時間算出(秒)
