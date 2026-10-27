@@ -60,7 +60,7 @@ Merged the [Endless Dream branch maintained by zkldi with backbeat support](http
 1. Download the base beatoraja 0.8.8 release.
 2. Clone the branch you need from this repository (use the `LDJPlus` branch for the LDJ feature), build the jar, and use it to replace `beatoraja.jar` in the beatoraja 0.8.8 directory.
 3. If there is no `config_sys.json` in the directory, launch the game once and close it to generate the file.
-4. Separately clone [iidx2bms](https://github.com/krrcream/iidx2bms) into any directory, and make sure it contains `conversion/conversion.py` and `music_data/music_data.json`. The standard version uses the `orajaroot` branch, and the no-audio-intermediate-product version uses the `orajaroot-plus` branch.
+4. Separately clone the `orajaroot-plus` branch of [iidx2bms](https://github.com/krrcream/iidx2bms) into any directory, and make sure it contains `conversion/conversion.py` and `music_data/music_data.json`. The standard version uses the `orajaroot` branch, and the no-audio-intermediate-product version uses the `orajaroot-plus` branch.
 ### Configuration Options
 
 Edit `config_sys.json` in the game directory and add the following options:
