@@ -293,6 +293,9 @@ public final class MusicSelector extends MainState {
 				song.setNotes(model.getTotalNotes());
 				// BPM推移图的横轴以谱面长度为准，缺了就整张图挤在最初一秒里
 				song.setLength(model.getLastTime());
+				// 选曲画面显示的BPM上下限同样来自谱面，缺了会显示0
+				song.setMinbpm((int) model.getMinBPM());
+				song.setMaxbpm((int) model.getMaxBPM());
 				song.setInformation(new SongInformation(model));
 			}
 			return;
