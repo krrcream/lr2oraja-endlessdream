@@ -5,6 +5,7 @@ import bms.player.beatoraja.MainState;
 import bms.player.beatoraja.play.BMSPlayer;
 import bms.player.beatoraja.skin.Skin.SkinObjectRenderer;
 import bms.player.beatoraja.song.SongData;
+import bms.player.beatoraja.song.SongInformation;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -34,6 +35,7 @@ public final class SkinNoteDistributionGraph extends SkinObject {
 
 	private BMSModel model;
 	private SongData current;
+	private SongInformation currentInfo;
 	private int[][] data = new int[0][0];
 
 	private static final Color[][] JGRAPH = {
@@ -126,6 +128,7 @@ public final class SkinNoteDistributionGraph extends SkinObject {
 		
 		final SongData song = state.resource.getSongdata();
 		final BMSModel model = song != null ? song.getBMSModel() : null;
+		final SongInformation info = song != null ? song.getInformation() : null;
 		
 		// TODO スキン定義側で分岐できないか？
 		if(chips == null) {
@@ -138,11 +141,15 @@ public final class SkinNoteDistributionGraph extends SkinObject {
 			}
 		}
 
-		if(shapetex == null || song != current || (this.model == null && model != null)) {
+		// LDJ谱面是在选曲画面里异步解析出谱面信息的，此时 SongData 与 model 都没变化，
+		// 只有 SongInformation 从无到有，因此必须把它也纳入重建条件
+		if(shapetex == null || song != current || (this.model == null && model != null)
+				|| (currentInfo == null && info != null && song.isLDJChart())) {
 			current = song;
 			this.model = model;
-			if(type == TYPE_NORMAL && song != null && song.getInformation() != null) {
-				updateGraph(song.getInformation().getDistributionValues());				
+			currentInfo = info;
+			if(type == TYPE_NORMAL && info != null) {
+				updateGraph(info.getDistributionValues());				
 			} else {
 				updateGraph();
 			}
