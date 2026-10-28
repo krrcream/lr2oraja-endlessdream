@@ -33,6 +33,7 @@ import bms.player.beatoraja.select.bar.*;
 import bms.player.beatoraja.skin.SkinType;
 import bms.player.beatoraja.skin.property.EventFactory.EventType;
 import bms.player.beatoraja.song.SongData;
+import bms.player.beatoraja.song.SongInformation;
 import bms.player.beatoraja.song.SongDatabaseAccessor;
 import imgui.ImGui;
 
@@ -276,6 +277,56 @@ public final class MusicSelector extends MainState {
 	}
 
 	/**
+	 * 为选曲画面显示中的谱面补充统计信息。
+	 *
+	 * <p>LDJ 谱面此时路径还是 iidx://，没有可读的谱面文件，只能先查转换缓存：
+	 * 命中时才解析缓存中的 BMS 并回填统计，未命中时保持空白，不触发转换。</p>
+	 */
+	private void applyChartInformation(SongData song) {
+		if (song == null) {
+			return;
+		}
+		if (song.isLDJChart() && LDJSongProvider.isLDJPath(song.getPath())) {
+			final BMSModel model = loadCachedLDJModel(song);
+			if (model != null) {
+				// 只回填统计，不走 setBMSModel：BMS 头会覆盖 music_data.json 与难度表提供的曲名、流派、等级
+				song.setNotes(model.getTotalNotes());
+				song.setInformation(new SongInformation(model));
+			}
+			return;
+		}
+		song.setBMSModel(resource.loadBMSModel(Paths.get(song.getPath()), config.getLnmode()));
+	}
+
+	/**
+	 * 解析已缓存的 LDJ 谱面，没有可用缓存时返回 null
+	 */
+	private BMSModel loadCachedLDJModel(SongData song) {
+		if (ldjConverter == null) {
+			return null;
+		}
+		final LDJChartRef ref = LDJChartRef.parse(song.getPath());
+		if (ref == null) {
+			return null;
+		}
+		try {
+			final LDJConversionService.Result cached = ldjConverter.readCachedResult(newLDJRequest(ref, null));
+			if (cached == null) {
+				return null;
+			}
+			final String token = ref.getDifficulty().getToken();
+			for (LDJConversionService.Chart chart : cached.charts) {
+				if (token.equalsIgnoreCase(chart.getDifficulty())) {
+					return resource.loadBMSModel(chart.resolve(cached.directory), config.getLnmode());
+				}
+			}
+		} catch (LDJConversionService.ConversionException e) {
+			logger.warn("iidx2bms: 選曲画面での譜面情報の読み込みに失敗しました: {}", e.getMessage());
+		}
+		return null;
+	}
+
+	/**
 	 * 从转换结果中查找所需难度的谱面，把 song 的路径改写为实际 BMS 文件
 	 *
 	 * @return 仅当找到对应谱面时为 true
@@ -468,10 +519,7 @@ public final class MusicSelector extends MainState {
 		if (timer.getNowTime() > timer.getTimer(TIMER_SONGBAR_CHANGE) + notesGraphDuration && !showNoteGraph && play == null) {
 			if (current instanceof SongBar && ((SongBar) current).existsSong()) {
 				SongData song = resource.getSongdata();
-				new Thread(() ->  {
-					song.setBMSModel(resource.loadBMSModel(Paths.get(((SongBar) current).getSongData().getPath()),
-							config.getLnmode()));
-				}).start();;
+				new Thread(() -> applyChartInformation(song)).start();
 			}
 			showNoteGraph = true;
 		}
