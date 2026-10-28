@@ -291,6 +291,8 @@ public final class MusicSelector extends MainState {
 			if (model != null) {
 				// 只回填统计，不走 setBMSModel：BMS 头会覆盖 music_data.json 与难度表提供的曲名、流派、等级
 				song.setNotes(model.getTotalNotes());
+				// BPM推移图的横轴以谱面长度为准，缺了就整张图挤在最初一秒里
+				song.setLength(model.getLastTime());
 				song.setInformation(new SongInformation(model));
 			}
 			return;

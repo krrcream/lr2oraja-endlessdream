@@ -27,6 +27,7 @@ public class SkinBPMGraph extends SkinObject {
 	private MainState state;
 	private BMSModel model;
 	private SongData current;
+	private SongInformation currentInfo;
 
 	/**
 	 * ゲージ描画を完了するまでの時間(ms)
@@ -92,12 +93,17 @@ public class SkinBPMGraph extends SkinObject {
 	public void draw(SkinObjectRenderer sprite) {
 		final SongData song = state.resource.getSongdata();
 		final BMSModel model = song != null ? song.getBMSModel() : null;
+		final SongInformation info = song != null ? song.getInformation() : null;
 		
-		if(shapetex == null || song != current || (this.model == null && model != null)) {
+		// LDJ谱面是在选曲画面里异步解析出谱面信息的，此时 SongData 与 model 都没变化，
+		// 只有 SongInformation 从无到有，因此必须把它也纳入重建条件
+		if(shapetex == null || song != current || (this.model == null && model != null)
+				|| (currentInfo == null && info != null && song.isLDJChart())) {
 			current = song;
 			this.model = model;
-			if(song != null && song.getInformation() != null) {
-				updateGraph(song.getInformation());
+			currentInfo = info;
+			if(info != null) {
+				updateGraph(info);
 			} else {
 				updateGraph(model);
 			}
