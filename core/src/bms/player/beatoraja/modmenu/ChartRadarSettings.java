@@ -26,7 +26,8 @@ public final class ChartRadarSettings {
 	public static final class Data {
 
 		public boolean enabled = true;
-		public float sizePercent = 20.0f;
+		/** 默认占窗口高度的 26%，比初版大一些，给轴标签和数值留出空间 */
+		public float sizePercent = 26.0f;
 		public boolean draggable = false;
 		public boolean showValues = true;
 		public float backgroundAlpha = 0.55f;
