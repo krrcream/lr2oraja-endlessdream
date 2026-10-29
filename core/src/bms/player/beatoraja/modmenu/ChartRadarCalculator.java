@@ -153,7 +153,8 @@ public final class ChartRadarCalculator {
 		radar[0] = (float) iidxRadar(noteCount / seconds, NOTES_BREAK);
 		radar[1] = (float) iidxRadar(peak, PEAK_BREAK);
 		radar[2] = (float) clamp(SCRATCH_A + SCRATCH_B * Math.log1p(scratchCount / seconds));
-		radar[3] = (float) clamp(SOFLAN_A + SOFLAN_B * Math.log1p(bpmChanges));
+		// 拟合式带 1.1736 的截距，完全不变速时会给出 1.17 分，按规格直接归零
+		radar[3] = bpmChanges == 0 ? 0.0f : (float) clamp(SOFLAN_A + SOFLAN_B * Math.log1p(bpmChanges));
 		radar[4] = (float) clamp(CHARGE_A + CHARGE_B * Math.sqrt(lnHeadCount / seconds));
 		radar[5] = (float) clamp(CHORD_A + CHORD_B * Math.log1p(pairCount / seconds));
 		return radar;
