@@ -39,6 +39,11 @@ public final class ChartRadarChart {
 	private ChartRadarChart() {
 	}
 
+	/** 窗口需要在标称尺寸之外预留的边长：一个放大后的字宽/字高 */
+	public static float extraMargin() {
+		return ImGui.getFontSize() * TEXT_SCALE;
+	}
+
 	/**
 	 * 在窗口绘图列表上画一张雷达图。{@code values} 为 null 时只画骨架并标注 no chart data。
 	 *
@@ -63,8 +68,10 @@ public final class ChartRadarChart {
 		final int highestAxis = highestAxis(values);
 		final boolean drawValues = showValues && values != null;
 
-		// 按每一轴内容的实际包围盒反算半径，保证文字（含数值与星标）全部落在窗口内
-		final float half = availableSize / 2.0f;
+		// 按每一轴内容的实际包围盒反算半径，保证文字（含数值与星标）全部落在窗口内；
+		// 再额外让出一整字宽高的边距，免得太贴边显得挤
+		final float edgeMargin = textSize;
+		final float half = availableSize / 2.0f - edgeMargin;
 		final float placeholderWidth = measure("200").x;
 		final float placeholderHeight = measure("200").y;
 		float radius = half - 2.0f;
