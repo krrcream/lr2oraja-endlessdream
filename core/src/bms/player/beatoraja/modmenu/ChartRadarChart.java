@@ -1,6 +1,7 @@
 package bms.player.beatoraja.modmenu;
 
 import imgui.ImDrawList;
+import imgui.ImFont;
 import imgui.ImGui;
 import imgui.ImVec2;
 
@@ -10,7 +11,7 @@ import imgui.ImVec2;
  * <p>数据多边形可能凹陷，所以填充用从圆心出发的三角形扇形，而不是 addConvexPolyFilled。</p>
  *
  * <p>ImGui 没有文字描边，这里用「黑色在周围 8 个方向各画一次再叠本色」的假描边。
- * 半径由标签实际尺寸反算，保证文字不会越出窗口边缘。</p>
+ * 半径由每一轴标签、数值与星标的实际尺寸反算，保证文字不会越出窗口边缘。</p>
  *
  * @author endlessdream
  */
@@ -19,8 +20,11 @@ public final class ChartRadarChart {
 	/** 轴的满值 */
 	private static final float AXIS_MAX = 200.0f;
 
-	/** 网格圈数，最外圈是白色粗框，里面三圈是红色细框 */
+	/** 网格圈数，最外圈是白色粗框，里面三圈是白色半透明细框 */
 	private static final int RING_COUNT = 4;
+
+	/** 文字相对 ImGui 默认字号的放大倍数 */
+	private static final float TEXT_SCALE = 1.3f;
 
 	/** 六轴配色，顺序与 {@link ChartRadarCalculator#AXIS_LABELS} 一致（品红 / 橙 / 红 / 蓝 / 紫 / 绿） */
 	private static final float[][] AXIS_COLORS = {
@@ -42,9 +46,13 @@ public final class ChartRadarChart {
 	 */
 	public static void draw(float centerX, float centerY, float availableSize, float[] values, boolean showValues) {
 		final ImDrawList drawList = ImGui.getWindowDrawList();
+		final ImFont font = ImGui.getFont();
+		final int textSize = Math.max(1, Math.round(ImGui.getFontSize() * TEXT_SCALE));
+		final float labelGap = ImGui.getFontSize() * 0.2f;
+
 		final int outlineColor = ImGui.getColorU32(0.0f, 0.0f, 0.0f, 0.95f);
 		final int outerRingColor = ImGui.getColorU32(1.0f, 1.0f, 1.0f, 0.95f);
-		final int innerRingColor = ImGui.getColorU32(0.82f, 0.12f, 0.14f, 0.85f);
+		final int innerRingColor = ImGui.getColorU32(1.0f, 1.0f, 1.0f, 0.50f);
 		final int axisColor = ImGui.getColorU32(1.0f, 1.0f, 1.0f, 0.20f);
 		final int fillColor = ImGui.getColorU32(0.55f, 0.04f, 0.07f, 0.60f);
 		final int lineColor = ImGui.getColorU32(0.95f, 0.18f, 0.18f, 1.0f);
@@ -52,30 +60,39 @@ public final class ChartRadarChart {
 		final int valueColor = ImGui.getColorU32(0.88f, 0.88f, 0.92f, 1.0f);
 
 		final int axes = ChartRadarCalculator.AXIS_COUNT;
-		final float fontSize = ImGui.getFontSize();
 		final int highestAxis = highestAxis(values);
 		final boolean drawValues = showValues && values != null;
 
-		// 先按标签（以及数值、星标）的尺寸反算半径，保证文字全部落在窗口内
+		// 按每一轴内容的实际包围盒反算半径，保证文字（含数值与星标）全部落在窗口内
 		final float half = availableSize / 2.0f;
-		float radius = half - 4.0f;
+		final float placeholderWidth = measure("200").x;
+		final float placeholderHeight = measure("200").y;
+		float radius = half - 2.0f;
 		for (int i = 0; i < axes; i++) {
 			final double angle = angleOf(i, axes);
-			final float cos = (float) Math.abs(Math.cos(angle));
-			final float sin = (float) Math.abs(Math.sin(angle));
-			final float starReserve = i == highestAxis ? fontSize : 0.0f;
-			final float halfWidth = ImGui.calcTextSize(ChartRadarCalculator.AXIS_LABELS[i]).x / 2.0f + starReserve
-					+ fontSize * 0.4f + 4.0f;
-			final float halfHeight = (fontSize + (drawValues ? fontSize : 0.0f)) / 2.0f + 4.0f;
-			if (cos > 0.01f) {
-				radius = Math.min(radius, (half - halfWidth) / cos);
+			final double dx = Math.cos(angle);
+			final double dy = Math.sin(angle);
+			final ImVec2 labelSize = measure(ChartRadarCalculator.AXIS_LABELS[i]);
+			final float starWidth = i == highestAxis ? measure(FontAwesomeIcons.Star).x + 3.0f : 0.0f;
+			final float leftExtent = labelSize.x / 2.0f + starWidth;
+			final float rightExtent = labelSize.x / 2.0f
+					+ (drawValues && valueOnRight(i) ? 4.0f + placeholderWidth : 0.0f);
+			final float topExtent = labelSize.y / 2.0f;
+			final float bottomExtent = labelSize.y / 2.0f
+					+ (drawValues && !valueOnRight(i) ? 1.0f + placeholderHeight : 0.0f);
+			if (dx > 0.01) {
+				radius = Math.min(radius, (half - rightExtent) / (float) dx - labelGap);
+			} else if (dx < -0.01) {
+				radius = Math.min(radius, (half - leftExtent) / (float) -dx - labelGap);
 			}
-			if (sin > 0.01f) {
-				radius = Math.min(radius, (half - halfHeight) / sin);
+			if (dy > 0.01) {
+				radius = Math.min(radius, (half - bottomExtent) / (float) dy - labelGap);
+			} else if (dy < -0.01) {
+				radius = Math.min(radius, (half - topExtent) / (float) -dy - labelGap);
 			}
 		}
 		radius = Math.max(6.0f, radius);
-		final float labelRadius = radius + fontSize * 0.35f;
+		final float labelRadius = radius + labelGap;
 
 		final float[] axisX = new float[axes];
 		final float[] axisY = new float[axes];
@@ -101,16 +118,14 @@ public final class ChartRadarChart {
 			drawList.addLine(centerX, centerY, axisX[i], axisY[i], axisColor);
 		}
 
-		drawLabels(drawList, centerX, centerY, labelRadius, values, drawValues, outlineColor, starColor, valueColor,
-				highestAxis);
+		drawLabels(drawList, font, textSize, centerX, centerY, labelRadius, values, drawValues, outlineColor,
+				starColor, valueColor, highestAxis);
 
 		if (values == null) {
 			final String text = "no chart data";
-			final ImVec2 textSize = ImGui.calcTextSize(text);
-			final float textX = centerX - textSize.x / 2.0f;
-			final float textY = centerY - textSize.y / 2.0f;
-			drawOutline(drawList, textX, textY, outlineColor, text);
-			drawList.addText(textX, textY, valueColor, text);
+			final ImVec2 textExtent = measure(text);
+			drawOutlinedText(drawList, font, textSize, centerX - textExtent.x / 2.0f, centerY - textExtent.y / 2.0f,
+					outlineColor, valueColor, text);
 			return;
 		}
 
@@ -133,40 +148,53 @@ public final class ChartRadarChart {
 		drawList.addPolyline(outline, outline.length, lineColor, 0, 2.0f);
 	}
 
-	/** 轴标签画在轴外侧并用轴色，最高的一轴左侧加金色星标，数值显示在标签下方 */
-	private static void drawLabels(ImDrawList drawList, float centerX, float centerY, float labelRadius,
-			float[] values, boolean drawValues, int outlineColor, int starColor, int valueColor, int highestAxis) {
+	/**
+	 * 轴标签画在轴外侧并用轴色，最高的一轴左侧加金色星标。
+	 * 数值默认在标签下方；正上方与正下方两轴（NOTES、SO-FLAN）把数值放到标签右侧，避免顶到窗口边缘。
+	 */
+	private static void drawLabels(ImDrawList drawList, ImFont font, int textSize, float centerX, float centerY,
+			float labelRadius, float[] values, boolean drawValues, int outlineColor, int starColor, int valueColor,
+			int highestAxis) {
 		final int axes = ChartRadarCalculator.AXIS_COUNT;
 		for (int i = 0; i < axes; i++) {
 			final double angle = angleOf(i, axes);
 			final String label = ChartRadarCalculator.AXIS_LABELS[i];
-			final ImVec2 labelSize = ImGui.calcTextSize(label);
+			final ImVec2 labelExtent = measure(label);
 			final float x = centerX + (float) (Math.cos(angle) * labelRadius);
 			final float y = centerY + (float) (Math.sin(angle) * labelRadius);
-			final float textX = x - labelSize.x / 2.0f;
-			final float textY = y - labelSize.y / 2.0f;
+			final float textX = x - labelExtent.x / 2.0f;
+			final float textY = y - labelExtent.y / 2.0f;
 
 			final int axisColor = ImGui.getColorU32(AXIS_COLORS[i][0], AXIS_COLORS[i][1], AXIS_COLORS[i][2], 1.0f);
-			drawOutline(drawList, textX, textY, outlineColor, label);
-			drawList.addText(textX, textY, axisColor, label);
+			drawOutlinedText(drawList, font, textSize, textX, textY, outlineColor, axisColor, label);
 
 			if (i == highestAxis) {
-				final ImVec2 starSize = ImGui.calcTextSize(FontAwesomeIcons.Star);
-				final float starX = textX - starSize.x - 3.0f;
-				final float starY = textY + (labelSize.y - starSize.y) / 2.0f;
-				drawOutline(drawList, starX, starY, outlineColor, FontAwesomeIcons.Star);
-				drawList.addText(starX, starY, starColor, FontAwesomeIcons.Star);
+				final ImVec2 starExtent = measure(FontAwesomeIcons.Star);
+				final float starX = textX - starExtent.x - 3.0f;
+				final float starY = textY + (labelExtent.y - starExtent.y) / 2.0f;
+				drawOutlinedText(drawList, font, textSize, starX, starY, outlineColor, starColor, FontAwesomeIcons.Star);
 			}
 
 			if (drawValues) {
 				final String value = String.valueOf(Math.round(values[i]));
-				final ImVec2 valueSize = ImGui.calcTextSize(value);
-				final float valueX = x - valueSize.x / 2.0f;
-				final float valueY = textY + labelSize.y + 1.0f;
-				drawOutline(drawList, valueX, valueY, outlineColor, value);
-				drawList.addText(valueX, valueY, valueColor, value);
+				final ImVec2 valueExtent = measure(value);
+				final float valueX;
+				final float valueY;
+				if (valueOnRight(i)) {
+					valueX = x + labelExtent.x / 2.0f + 4.0f;
+					valueY = textY + (labelExtent.y - valueExtent.y) / 2.0f;
+				} else {
+					valueX = x - valueExtent.x / 2.0f;
+					valueY = textY + labelExtent.y + 1.0f;
+				}
+				drawOutlinedText(drawList, font, textSize, valueX, valueY, outlineColor, valueColor, value);
 			}
 		}
+	}
+
+	/** 正上方（NOTES）与正下方（SO-FLAN）两轴的数值放到标签右侧 */
+	private static boolean valueOnRight(int axis) {
+		return axis == 0 || axis == 3;
 	}
 
 	/** 从正上方开始顺时针的角度 */
@@ -174,16 +202,25 @@ public final class ChartRadarChart {
 		return -Math.PI / 2.0 + 2.0 * Math.PI * index / axes;
 	}
 
-	/** 假描边：黑色在周围 8 个方向各画一次 */
-	private static void drawOutline(ImDrawList drawList, float x, float y, int color, String text) {
+	/** 按缩放后的字号测量文字尺寸 */
+	private static ImVec2 measure(String text) {
+		final ImVec2 base = ImGui.calcTextSize(text);
+		return new ImVec2(base.x * TEXT_SCALE, base.y * TEXT_SCALE);
+	}
+
+	/** 假描边：黑色在周围 8 个方向各画一次，最后叠上本色 */
+	private static void drawOutlinedText(ImDrawList drawList, ImFont font, int textSize, float x, float y,
+			int outlineColor, int color, String text) {
+		final float offset = Math.max(1.0f, textSize / 14.0f);
 		for (int dx = -1; dx <= 1; dx++) {
 			for (int dy = -1; dy <= 1; dy++) {
 				if (dx == 0 && dy == 0) {
 					continue;
 				}
-				drawList.addText(x + dx, y + dy, color, text);
+				drawList.addText(font, textSize, x + dx * offset, y + dy * offset, outlineColor, text);
 			}
 		}
+		drawList.addText(font, textSize, x, y, color, text);
 	}
 
 	/** 数值最高的一轴；没有数据时返回 -1 */
