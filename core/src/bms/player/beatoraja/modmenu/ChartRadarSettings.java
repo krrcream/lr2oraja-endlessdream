@@ -20,14 +20,18 @@ public final class ChartRadarSettings {
 	/** 写盘限流间隔（毫秒） */
 	private static final long SAVE_INTERVAL_MILLIS = 500;
 
+	/** 三档尺寸的默认值（占窗口高度的百分比），给轴标签和数值留出空间 */
+	private static final float DEFAULT_SIZE_PERCENT = 26.0f;
+
 	/**
 	 * 设置内容。位置与大小都用窗口的百分比，窗口拉伸或换分辨率都不会跑位。
+	 *
+	 * <p>三个画面各自保存一份尺寸；{@code selectSize} 等为 0 表示尚未设置，
+	 * 由 {@code sizePercent}（旧版的单一尺寸）或默认值兜底。</p>
 	 */
 	public static final class Data {
 
 		public boolean enabled = true;
-		/** 默认占窗口高度的 26%，比初版大一些，给轴标签和数值留出空间 */
-		public float sizePercent = 26.0f;
 		public boolean draggable = false;
 		public boolean showValues = true;
 		public float backgroundAlpha = 0.55f;
@@ -37,6 +41,12 @@ public final class ChartRadarSettings {
 		public float playY = 50.0f;
 		public float resultX = 50.0f;
 		public float resultY = 50.0f;
+		/** 各画面尺寸，占窗口高度的百分比 */
+		public float selectSize = 0.0f;
+		public float playSize = 0.0f;
+		public float resultSize = 0.0f;
+		/** 旧版只有这一个尺寸，读档时作为三档的兜底 */
+		public float sizePercent = 0.0f;
 	}
 
 	private static final Json json = new Json();
@@ -88,6 +98,37 @@ public final class ChartRadarSettings {
 		markDirty();
 	}
 
+	/** 取某个画面的尺寸（占窗口高度的百分比） */
+	public static float size(int slot) {
+		final Data settings = get();
+		switch (slot) {
+		case ChartRadarOverlay.SLOT_PLAY:
+			return settings.playSize;
+		case ChartRadarOverlay.SLOT_RESULT:
+			return settings.resultSize;
+		default:
+			return settings.selectSize;
+		}
+	}
+
+	/** 把某个画面的尺寸写回设置 */
+	public static void setSize(int slot, float percent) {
+		final Data settings = get();
+		final float value = clamp(percent, 5.0f, 60.0f);
+		switch (slot) {
+		case ChartRadarOverlay.SLOT_PLAY:
+			settings.playSize = value;
+			break;
+		case ChartRadarOverlay.SLOT_RESULT:
+			settings.resultSize = value;
+			break;
+		default:
+			settings.selectSize = value;
+			break;
+		}
+		markDirty();
+	}
+
 	/** 标记有改动，实际写盘由 {@link #flush()} 限流完成 */
 	public static void markDirty() {
 		dirty = true;
@@ -121,7 +162,6 @@ public final class ChartRadarSettings {
 		}
 		final Data settings = loaded != null ? loaded : new Data();
 		// 文件可能被手改坏，读进来先夹到合法区间
-		settings.sizePercent = clamp(settings.sizePercent, 5.0f, 60.0f);
 		settings.backgroundAlpha = clamp(settings.backgroundAlpha, 0.0f, 1.0f);
 		settings.selectX = clamp(settings.selectX, 0.0f, 100.0f);
 		settings.selectY = clamp(settings.selectY, 0.0f, 100.0f);
@@ -129,6 +169,12 @@ public final class ChartRadarSettings {
 		settings.playY = clamp(settings.playY, 0.0f, 100.0f);
 		settings.resultX = clamp(settings.resultX, 0.0f, 100.0f);
 		settings.resultY = clamp(settings.resultY, 0.0f, 100.0f);
+		// 三档尺寸：未设置（0）时用旧版单一尺寸兜底，再不行用默认值
+		settings.sizePercent = clamp(settings.sizePercent, 0.0f, 60.0f);
+		final float fallback = settings.sizePercent > 0.0f ? settings.sizePercent : DEFAULT_SIZE_PERCENT;
+		settings.selectSize = settings.selectSize > 0.0f ? clamp(settings.selectSize, 5.0f, 60.0f) : fallback;
+		settings.playSize = settings.playSize > 0.0f ? clamp(settings.playSize, 5.0f, 60.0f) : fallback;
+		settings.resultSize = settings.resultSize > 0.0f ? clamp(settings.resultSize, 5.0f, 60.0f) : fallback;
 		return settings;
 	}
 
