@@ -90,33 +90,40 @@ public class ChartRadarMenu {
 
 			ImGui.separator();
 			ImGui.text("Layout (position: percent of window, size: percent of window height)");
-			if (ImGui.sliderFloat2("Select X/Y", SELECT, 0.0f, 100.0f)) {
+			// 三行的 Size 滑条文字相同，必须各套一层 ID，否则 ImGui 会把它们当成同一个控件一起拖动
+			ImGui.pushID("Select");
+			if (ImGui.sliderFloat2("X/Y (%)", SELECT, 0.0f, 100.0f)) {
 				settings.selectX = SELECT[0];
 				settings.selectY = SELECT[1];
 				ChartRadarSettings.markDirty();
 			}
 			ImGui.sameLine();
-			if (ImGui.sliderFloat("Size", SELECT_SIZE, 5.0f, 60.0f)) {
+			if (ImGui.sliderFloat("Size (%)", SELECT_SIZE, 5.0f, 60.0f)) {
 				ChartRadarSettings.setSize(ChartRadarOverlay.SLOT_SELECT, SELECT_SIZE[0]);
 			}
-			if (ImGui.sliderFloat2("Play X/Y", PLAY, 0.0f, 100.0f)) {
+			ImGui.popID();
+			ImGui.pushID("Play");
+			if (ImGui.sliderFloat2("X/Y (%)", PLAY, 0.0f, 100.0f)) {
 				settings.playX = PLAY[0];
 				settings.playY = PLAY[1];
 				ChartRadarSettings.markDirty();
 			}
 			ImGui.sameLine();
-			if (ImGui.sliderFloat("Size", PLAY_SIZE, 5.0f, 60.0f)) {
+			if (ImGui.sliderFloat("Size (%)", PLAY_SIZE, 5.0f, 60.0f)) {
 				ChartRadarSettings.setSize(ChartRadarOverlay.SLOT_PLAY, PLAY_SIZE[0]);
 			}
-			if (ImGui.sliderFloat2("Result X/Y", RESULT, 0.0f, 100.0f)) {
+			ImGui.popID();
+			ImGui.pushID("Result");
+			if (ImGui.sliderFloat2("X/Y (%)", RESULT, 0.0f, 100.0f)) {
 				settings.resultX = RESULT[0];
 				settings.resultY = RESULT[1];
 				ChartRadarSettings.markDirty();
 			}
 			ImGui.sameLine();
-			if (ImGui.sliderFloat("Size", RESULT_SIZE, 5.0f, 60.0f)) {
+			if (ImGui.sliderFloat("Size (%)", RESULT_SIZE, 5.0f, 60.0f)) {
 				ChartRadarSettings.setSize(ChartRadarOverlay.SLOT_RESULT, RESULT_SIZE[0]);
 			}
+			ImGui.popID();
 			if (ImGui.button("Copy Select to Play")) {
 				copyPosition(settings.selectX, settings.selectY, ChartRadarOverlay.SLOT_PLAY);
 			}
