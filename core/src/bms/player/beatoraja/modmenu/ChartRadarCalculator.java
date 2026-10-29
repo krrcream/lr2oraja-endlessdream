@@ -10,23 +10,25 @@ import bms.model.Note;
 import bms.model.TimeLine;
 
 /**
- * 谱面七维属性计算器：把 {@link BMSModel} 换算成 NOTE／PEAK／SCRATCH／SO-FLAN／CHARGE／CHORD／STREAM 七轴，刻度 0–200。
+ * 谱面属性计算器：把 {@link BMSModel} 换算成 NOTE／PEAK／SCRATCH／SO-FLAN／CHARGE／CHORD 六轴，刻度 0–200。
  *
  * <p>口径以 note_attributes 目录里的 Python 实现为准，而不是 IIDX_Radar_7Axis.md 第 4 节：
- * 长条只算头；scratch_per_sec 的分子含长条头尾；连打比率的候选含长条尾、同刻事件数含皿。</p>
+ * 长条只算头；scratch_per_sec 的分子含长条头尾。</p>
  *
  * <p>时长取 {@link BMSModel#getLastTime()}（最后一个有数据的 TimeLine），比 Python 补到小节末尾的口径略短，
  * 因此每秒类指标会略偏高，属于已接受的近似。</p>
+ *
+ * <p>第七轴 STREAM 是我们自造的（IIDX 没有这一轴），2026-10-29 按用户要求停用，算法以注释形式保留在本类里。</p>
  *
  * @author endlessdream
  */
 public final class ChartRadarCalculator {
 
 	/** 轴数 */
-	public static final int AXIS_COUNT = 7;
+	public static final int AXIS_COUNT = 6;
 
 	/** 轴标签，顺时针从正上方开始 */
-	public static final String[] AXIS_LABELS = { "NOTE", "PEAK", "SCRATCH", "SO-FLAN", "CHARGE", "CHORD", "STREAM" };
+	public static final String[] AXIS_LABELS = { "NOTE", "PEAK", "SCRATCH", "SO-FLAN", "CHARGE", "CHORD" };
 
 	/** IIDX 四段折线的断点（DP） */
 	private static final double[] NOTES_BREAK = { 10.4, 15.4, 17.9, 20.0 };
@@ -35,11 +37,12 @@ public final class ChartRadarCalculator {
 	/** 4 秒峰值窗口（微秒） */
 	private static final long PEAK_WINDOW_MICRO = 4000000L;
 
-	/** 连打窗口半宽为 0.75 拍，换算成秒即 45 / BPM */
+	/*
+	 * 以下四项是已停用的 STREAM 轴参数（第七轴由我们自己定义，2026-10-29 按用户要求停用，保留备查）：
+	 * 连打窗口半宽 0.75 拍换算成秒即 45 / BPM，阈值为窗口内加权每秒音符数。
+	 */
 	private static final double STREAM_HALF_WINDOW_NUMERATOR = 45.0;
-	/** 连打判定阈值：窗口内加权每秒音符数达到该值才算候选 */
 	private static final double STREAM_NPS_THRESHOLD = 8.0;
-	/** 连打权重：单点与和弦 */
 	private static final double STREAM_WEIGHT_SINGLE = 1.0;
 	private static final double STREAM_WEIGHT_CHORD = 0.6;
 
@@ -67,7 +70,7 @@ public final class ChartRadarCalculator {
 	}
 
 	/**
-	 * 计算七轴数值，顺序与 {@link #AXIS_LABELS} 一致。
+	 * 计算六轴数值，顺序与 {@link #AXIS_LABELS} 一致。
 	 */
 	public static float[] compute(BMSModel model) {
 		final Mode mode = model.getMode();
@@ -78,11 +81,10 @@ public final class ChartRadarCalculator {
 		int scratchCount = 0;   // scratch_per_sec：含长条头尾
 		int lnHeadCount = 0;    // ln_per_sec：全部长条头（含皿）
 		int pairCount = 0;      // pairs_per_sec：n 键和弦贡献 C(n,2)
-		int eventCount = 0;     // 连打比率的分母：全部事件
 		int bpmChanges = 0;
 
 		final LongBuffer peakTimes = new LongBuffer();
-		final StreamBuffer streamEvents = new StreamBuffer();
+		// STREAM 停用后不再需要连打候选缓冲：final StreamBuffer streamEvents = new StreamBuffer();
 
 		double previousBpm = model.getBpm();
 		for (TimeLine timeline : timelines) {
@@ -93,15 +95,13 @@ public final class ChartRadarCalculator {
 				previousBpm = bpm;
 			}
 
-			// 同刻分组：全体事件（含皿、含长条尾）用于连打权重，去掉长条尾的那份用于同时押对数
-			int groupAll = 0;
+			// 同刻分组：去掉长条尾的那份用于同时押对数
 			int groupHead = 0;
 			for (int lane = 0; lane < lanes; lane++) {
 				final Note note = timeline.getNote(lane);
 				if (note == null || note instanceof MineNote) {
 					continue;
 				}
-				groupAll++;
 				if (!isLongNoteEnd(note)) {
 					groupHead++;
 				}
@@ -109,7 +109,6 @@ public final class ChartRadarCalculator {
 			if (groupHead > 1) {
 				pairCount += groupHead * (groupHead - 1) / 2;
 			}
-			final double weight = groupAll >= 2 ? STREAM_WEIGHT_CHORD : STREAM_WEIGHT_SINGLE;
 
 			for (int lane = 0; lane < lanes; lane++) {
 				final Note note = timeline.getNote(lane);
@@ -118,7 +117,6 @@ public final class ChartRadarCalculator {
 				}
 				final boolean scratch = mode.isScratchKey(lane);
 				final boolean lnEnd = isLongNoteEnd(note);
-				eventCount++;
 				if (scratch) {
 					scratchCount++;
 				}
@@ -129,10 +127,6 @@ public final class ChartRadarCalculator {
 					if (note instanceof LongNote) {
 						lnHeadCount++;
 					}
-				}
-				if (!scratch) {
-					// 连打候选含长条尾，只排除皿
-					streamEvents.add(time, bpm, weight);
 				}
 			}
 		}
@@ -148,30 +142,12 @@ public final class ChartRadarCalculator {
 			peak = Math.max(peak, j - i);
 		}
 
-		// 连打比率：窗口半宽取该音符处的局部 BPM，加权和除以窗口全宽得到加权 NPS
-		double streamRatio = 0.0;
-		if (eventCount > 0 && streamEvents.size > 0) {
-			final double[] prefix = new double[streamEvents.size + 1];
-			for (int i = 0; i < streamEvents.size; i++) {
-				prefix[i + 1] = prefix[i] + streamEvents.weights[i];
-			}
-			int candidates = 0;
-			for (int i = 0; i < streamEvents.size; i++) {
-				final double bpm = streamEvents.bpms[i];
-				if (bpm <= 0) {
-					continue;
-				}
-				final double halfWindow = STREAM_HALF_WINDOW_NUMERATOR / bpm;
-				final long halfWindowMicro = Math.round(halfWindow * 1000000.0);
-				final int from = lowerBound(streamEvents.times, streamEvents.size, streamEvents.times[i] - halfWindowMicro);
-				final int to = upperBound(streamEvents.times, streamEvents.size, streamEvents.times[i] + halfWindowMicro);
-				final double weightSum = prefix[to] - prefix[from];
-				if (weightSum / (2.0 * halfWindow) >= STREAM_NPS_THRESHOLD) {
-					candidates++;
-				}
-			}
-			streamRatio = (double) candidates / eventCount;
-		}
+		/*
+		 * STREAM 轴已停用，原连打比率计算保留备查：
+		 * 候选为全部非皿事件（含长条尾），权重为同刻事件数 >= 2 时取 STREAM_WEIGHT_CHORD 否则取 SINGLE；
+		 * 对每个候选取 ±(45 / 局部BPM) 秒窗口，窗口内加权和 / 窗口全宽 >= 8 计一个候选；
+		 * x_stream = 候选数 / 全部事件数，radar[6] = clamp(x_stream * 200)。
+		 */
 
 		final float[] radar = new float[AXIS_COUNT];
 		radar[0] = (float) iidxRadar(noteCount / seconds, NOTES_BREAK);
@@ -180,7 +156,6 @@ public final class ChartRadarCalculator {
 		radar[3] = (float) clamp(SOFLAN_A + SOFLAN_B * Math.log1p(bpmChanges));
 		radar[4] = (float) clamp(CHARGE_A + CHARGE_B * Math.sqrt(lnHeadCount / seconds));
 		radar[5] = (float) clamp(CHORD_A + CHORD_B * Math.log1p(pairCount / seconds));
-		radar[6] = (float) clamp(streamRatio * 200.0);
 		return radar;
 	}
 
@@ -216,6 +191,9 @@ public final class ChartRadarCalculator {
 		return Math.max(min, Math.min(max, value));
 	}
 
+	/*
+	 * 以下两个二分查找只服务于已停用的 STREAM 轴，保留备查。
+	 */
 	private static int lowerBound(long[] values, int size, long target) {
 		int low = 0;
 		int high = size;
@@ -258,7 +236,7 @@ public final class ChartRadarCalculator {
 		}
 	}
 
-	/** 连打候选缓冲：时间、局部 BPM、权重 */
+	/** 连打候选缓冲：时间、局部 BPM、权重。STREAM 轴停用后暂时没有调用方，保留备查。 */
 	private static final class StreamBuffer {
 
 		private long[] times = new long[512];

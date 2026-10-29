@@ -8,7 +8,7 @@ import bms.model.BMSModel;
 import bms.player.beatoraja.song.SongData;
 
 /**
- * 七维结果缓存：按 BMSModel 身份判断是否重算，重算跑在后台线程，渲染线程只读已经算好的结果。
+ * 谱面属性结果缓存：按 BMSModel 身份判断是否重算，重算跑在后台线程，渲染线程只读已经算好的结果。
  *
  * <p>谱面来源默认直接取 {@link SongData#getBMSModel()}。LDJ 侧可以把 {@link ModelResolver} 换成走转换缓存的实现
  * （LDJPlus 上的 LDJChartRadar），ChartRadar 自身不引用任何 LDJ 类，两边只在这一个静态入口交汇。</p>
@@ -65,7 +65,7 @@ public final class ChartRadarModelCache {
 	}
 
 	/**
-	 * 取当前曲目的七维结果。尚未算完、谱面读不到或模式不支持时返回 null，调用方按空图处理，下一帧再取。
+	 * 取当前曲目的属性结果。尚未算完、谱面读不到或模式不支持时返回 null，调用方按空图处理，下一帧再取。
 	 */
 	public static float[] get(SongData song) {
 		final BMSModel model = resolver.resolve(song);
