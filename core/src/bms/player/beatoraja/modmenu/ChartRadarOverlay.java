@@ -96,14 +96,13 @@ public final class ChartRadarOverlay {
 			ImGui.getWindowDrawList().addRectFilled(windowPos.x, windowPos.y, windowPos.x + size, windowPos.y + size,
 					panelColor, 8.0f);
 
-			final float fontSize = ImGui.getFontSize();
-			final float radius = Math.max(8.0f, size / 2.0f - fontSize * 2.0f);
 			final SongData song = state.resource.getSongdata();
-			ChartRadarChart.draw(windowPos.x + size / 2.0f, windowPos.y + size / 2.0f, radius,
+			// 半径交给绘制侧按标签尺寸反算，避免文字越出窗口
+			ChartRadarChart.draw(windowPos.x + size / 2.0f, windowPos.y + size / 2.0f, size,
 					ChartRadarModelCache.get(song), settings.showValues);
 
 			if (interactive) {
-				final float buttonSize = fontSize * 1.5f;
+				final float buttonSize = ImGui.getFontSize() * 1.5f;
 				ImGui.setCursorPos(size - buttonSize - 6.0f, 6.0f);
 				if (ImGui.button(FontAwesomeIcons.Cog, buttonSize, buttonSize)) {
 					ImGuiRenderer.setChartRadarSettingsVisible(true);

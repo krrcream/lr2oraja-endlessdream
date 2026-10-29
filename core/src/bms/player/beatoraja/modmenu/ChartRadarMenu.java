@@ -44,7 +44,8 @@ public class ChartRadarMenu {
 				ImGuiRenderer.setChartRadarSettingsVisible(true);
 			}
 		}
-		sameLineHelp("Six-axis chart (0-200) of the selected chart: NOTE / PEAK / SCRATCH / SO-FLAN / CHARGE / CHORD.");
+		sameLineHelp("Six-axis chart (0-200) of the selected chart: NOTES / PEAK / SCRATCH / SO-FLAN / CHARGE / CHORD. "
+				+ "The highest axis gets a gold star.");
 	}
 
 	/** 设置窗口内容 */
