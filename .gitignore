@@ -170,3 +170,7 @@ core/bin
 
 util/
 core/src/resources/build.properties
+
+# Python 缓存（iidx2bms 桥接脚本运行时生成）
+__pycache__/
+*.pyc
