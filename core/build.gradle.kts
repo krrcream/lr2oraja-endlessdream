@@ -64,6 +64,10 @@ tasks {
     compileTestJava {
         dependsOn("generateBuildMetaInfo")
     }
+    processResources {
+        // iidx2bms 桥接脚本运行时会生成 __pycache__，它不是资源，不要打进 jar
+        exclude("**/__pycache__/**")
+    }
 
     // fat/uber-jar task provided by https://github.com/GradleUp/shadow
     shadowJar {
