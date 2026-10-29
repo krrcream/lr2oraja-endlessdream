@@ -28,7 +28,7 @@ public final class ChartRadarCalculator {
 	public static final int AXIS_COUNT = 6;
 
 	/** 轴标签，顺时针从正上方开始 */
-	public static final String[] AXIS_LABELS = { "NOTE", "PEAK", "SCRATCH", "SO-FLAN", "CHARGE", "CHORD" };
+	public static final String[] AXIS_LABELS = { "NOTES", "PEAK", "SCRATCH", "SO-FLAN", "CHARGE", "CHORD" };
 
 	/** IIDX 四段折线的断点（DP） */
 	private static final double[] NOTES_BREAK = { 10.4, 15.4, 17.9, 20.0 };
