@@ -72,7 +72,9 @@ public final class ChartRadarOverlay {
 		lastType = type;
 
 		final float[] position = ChartRadarSettings.position(slot);
-		final float size = Math.max(64.0f, ImGuiRenderer.windowHeight * settings.sizePercent / 100.0f);
+		// 比标称尺寸多出一个字的宽高，配合绘制侧的边距，让标签离窗口边缘有余量
+		final float size = Math.max(64.0f, ImGuiRenderer.windowHeight * settings.sizePercent / 100.0f)
+				+ ChartRadarChart.extraMargin();
 		final float windowX = ImGuiRenderer.windowWidth * position[0] / 100.0f - size / 2.0f;
 		final float windowY = ImGuiRenderer.windowHeight * position[1] / 100.0f - size / 2.0f;
 
