@@ -50,6 +50,7 @@ public class ImGuiRenderer {
     private static ImBoolean SHOW_PERFORMANCE_MONITOR = new ImBoolean(false);
     private static ImBoolean SHOW_SKIN_MENU = new ImBoolean(false);
     private static ImBoolean SHOW_MISC_SETTING = new ImBoolean(false);
+    private static ImBoolean SHOW_CHART_RADAR_SETTINGS = new ImBoolean(false);
 
 
     public static void init() {
@@ -107,6 +108,9 @@ public class ImGuiRenderer {
     }
 
     public static void render() {
+        // 雷达窗口先画，让它待在最底层：F5 菜单、设置窗口与通知都盖在它上面
+        ChartRadarMenu.renderOverlay();
+
         // Relative from top left corner, so 44% from the left, 2% from the top
         float relativeX = windowWidth * 0.44f;
         float relativeY = windowHeight * 0.02f;
@@ -115,6 +119,8 @@ public class ImGuiRenderer {
         if (SHOW_MOD_MENU.get()) {
             ImGui.begin("Endless Dream", ImGuiWindowFlags.AlwaysAutoResize);
 
+            ChartRadarMenu.renderEnableCheckbox();
+            ImGui.checkbox("Show Chart Radar Settings", SHOW_CHART_RADAR_SETTINGS);
             ImGui.checkbox("Show SPDP Convert Window", SHOW_SPDP_CONVERT);
             ImGui.checkbox("Show Rate Modifier Window", SHOW_FREQ_PLUS);
             ImGui.checkbox("Show Random Trainer Window", SHOW_RANDOM_TRAINER);
@@ -182,6 +188,11 @@ public class ImGuiRenderer {
             ImGui.end();
         }
 
+        // 设置窗口独立于 F5 菜单渲染，这样雷达窗口上的齿轮在菜单关闭时也能把它叫出来
+        if (SHOW_CHART_RADAR_SETTINGS.get()) {
+            ChartRadarMenu.show(SHOW_CHART_RADAR_SETTINGS);
+        }
+
         ImGuiNotify.renderNotifications();
         LDJConversionOverlay.render();
     }
@@ -212,6 +223,15 @@ public class ImGuiRenderer {
 
     public static void toggleMenu() {
         SHOW_MOD_MENU.set(!SHOW_MOD_MENU.get());
+        if (!SHOW_MOD_MENU.get()) {
+            // 设置窗口跟随 F5 开关，关闭菜单时一起收起
+            SHOW_CHART_RADAR_SETTINGS.set(false);
+        }
+    }
+
+    /** 雷达窗口右上角的齿轮用它打开设置窗口 */
+    public static void setChartRadarSettingsVisible(boolean visible) {
+        SHOW_CHART_RADAR_SETTINGS.set(visible);
     }
 
     public static void helpMarker(String desc) {
