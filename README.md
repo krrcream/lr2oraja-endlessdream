@@ -47,6 +47,18 @@ The following training features were added to the built-in Mod menu (shortcut `F
 - Emulates IIDX-style groove gauge and judgement
 - Enhanced frequency (rate) training: 0.1% fine adjustment, 0.5% steps in practice mode, simulation of the original judgement logic, and simulation of the original gauge behavior
 
+### Chart Radar
+
+After enabling the first entry of the built-in Mod menu (`F5` / `Insert`), a six-axis radar stays on screen in the song select, play and result screens.
+
+- Six axes: `NOTES` / `PEAK` / `SCRATCH` / `SO-FLAN` / `CHARGE` / `CHORD`, scaled 0–200
+- Song select, play and result each **keep their own** position and size; the window moves to the matching spot when the screen changes
+- Settings live in `notesradar.json` next to ImGui's `layout.ini` in the game directory, not in the player configuration
+
+> About the algorithm: this is **not** IIDX's official NOTES RADAR algorithm, so the values will not exactly match the arcade display.
+> `NOTES` and `PEAK` follow the IIDX formulas collected from the web; the other four axes are modelled after [HorieYuuka/Note-attributes](https://horieyuuka.github.io/Note-attributes)
+> Scope: only 7-key / 14-key charts are computed; other modes show an empty chart.
+
 ### backbeat Integration
 
 Merged the [Endless Dream branch maintained by zkldi with backbeat support](https://github.com/zkldi/lr2oraja-endlessdream/releases), which can be used for chart downloads; see the upstream project's documentation for usage.
