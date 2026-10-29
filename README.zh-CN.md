@@ -47,6 +47,18 @@
 - 模拟IIDX血条（Gauge）与判定（Judge）
 - 频率训练增强：支持 0.1% 精细调速、练习模式 0.5% 步长、模拟原版判定逻辑、模拟原版血条机制
 
+### 谱面雷达（Chart Radar）
+
+在内置 Mod 菜单（`F5` / `Insert`）第一项开启后，选曲、游玩、结算画面上会常驻一张六维雷达图。
+
+- 六个轴：`NOTES` / `PEAK` / `SCRATCH` / `SO-FLAN` / `CHARGE` / `CHORD`，刻度 0–200
+- 选曲、游玩、结算三个画面**各自保存**位置与大小，切换画面时自动跳到对应位置
+- 设置写在游戏目录的 `notesradar.json`（与 ImGui 的 `layout.ini` 同位置），不写进玩家配置
+
+> 关于算法：本功能**不是 IIDX 官方的 NOTES RADAR 算法**，数值与街机上的显示不会完全一致。
+> `NOTES`、`PEAK` 两轴沿用网络搜集的 IIDX 的公式，其余四轴是参考 [HorieYuuka/Note-attributes](https://horieyuuka.github.io/Note-attributes)
+> 适用范围：只对 7 键 / 14 键谱面计算，其他模式显示空图。
+
 ### backbeat 集成
 
 合并了 [zkldi 维护的带 backbeat 支持的 Endless Dream 分支](https://github.com/zkldi/lr2oraja-endlessdream/releases)，可用于谱面下载，具体用法可参考上游项目说明。
