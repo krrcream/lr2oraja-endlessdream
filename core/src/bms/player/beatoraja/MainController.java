@@ -33,6 +33,7 @@ import bms.player.beatoraja.obs.*;
 import bms.player.beatoraja.input.BMSPlayerInputProcessor;
 import bms.player.beatoraja.input.KeyCommand;
 import bms.player.beatoraja.ir.*;
+import bms.player.beatoraja.ldj.*;
 import bms.player.beatoraja.play.BMSPlayer;
 import bms.player.beatoraja.play.TargetProperty;
 import bms.player.beatoraja.result.CourseResult;
@@ -450,6 +451,7 @@ public class MainController {
     	initializeStates();
 		updateStateReferences();
 		MiscSettingMenu.setMain(this);
+		LDJChartRadar.init(this);
 		if (bmsfile != null) {
 			if(resource.setBMSFile(bmsfile, auto)) {
 				changeState(MainStateType.PLAY);
