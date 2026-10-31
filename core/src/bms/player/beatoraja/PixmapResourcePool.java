@@ -1,7 +1,11 @@
 package bms.player.beatoraja;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,40 +59,67 @@ public class PixmapResourcePool extends ResourcePool<String, Pixmap> {
 	 * @return イメージ。読めなかった場合またはpathがファイルでない場合はnullを返す
 	 */
 	public static Pixmap loadPicture(String path) {
-		Pixmap tex = null;
 		File f = new File(path);
 		if(!f.isFile()) {
-			return tex;
+			return null;
 		}
 
-		try {
-			if(path.endsWith(".cim")) {
-				tex = PixmapIO.readCIM(Gdx.files.internal(path));
-			} else {
-				tex = new Pixmap(Gdx.files.internal(path));				
-			}
-		} catch (Throwable e) {
-			logger.warn("BGAファイル読み込み失敗。{}", e.getMessage());
-		}
-		if (tex == null) {
-			logger.warn("BGAファイル読み込み再試行:{}", path);
+		if(path.endsWith(".cim")) {
 			try {
-				// TODO 一部のbmsはImageIO.readで失敗する(e.g. past glow)。別の画像デコーダーが必要
-				BufferedImage bi = ImageIO.read(f);
-//						System.out.println("width : " + bi.getWidth() + " height : " + bi.getHeight() + " type : " + bi.getType());
-				tex = new Pixmap(bi.getWidth(), bi.getHeight(), Pixmap.Format.RGBA8888);
-				for(int x = 0;x < bi.getWidth();x++) {
-					for(int y = 0;y < bi.getHeight();y++) {
-						tex.drawPixel(x, y, (bi.getRGB(x, y) << 8 | 0x000000ff));
-					}
-				}
+				return PixmapIO.readCIM(Gdx.files.internal(path));
 			} catch (Throwable e) {
 				logger.warn("BGAファイル読み込み失敗。{}", e.getMessage());
-				e.printStackTrace();
+				return null;
 			}
 		}
 
-		return tex;
+		try (InputStream in = new FileInputStream(f)) {
+			return decode(in, path);
+		} catch (Throwable e) {
+			logger.warn("BGAファイル読み込み失敗。{}", e.getMessage());
+			return null;
+		}
+	}
+
+	/**
+	 * 用 Java 侧的 ImageIO 解码图片。
+	 * 不走 libgdx 的 native stb_image：它遇到畸形或非常规的图片是 C 层 assert，
+	 * 会弹出 CRT 断言框并把这个线程卡死，Java 侧的 try/catch 拦不住，只能强退游戏。
+	 * 这里解码失败一律当作「这张图不存在」，记一条日志后返回 null，游戏照常继续。
+	 */
+	private static Pixmap decode(InputStream in, String name) {
+		try {
+			BufferedImage image = ImageIO.read(in);
+			if (image == null) {
+				logger.warn("画像デコード失敗(スキップ) : {}", name);
+				return null;
+			}
+			return toPixmap(image);
+		} catch (Throwable e) {
+			logger.warn("画像デコード失敗(スキップ) : {} - {}", name, e.getMessage());
+			return null;
+		}
+	}
+
+	/**
+	 * BufferedImage 整块转成 RGBA8888 的 Pixmap。
+	 * 逐像素 drawPixel 对 640x480 以上的图太慢，这里直接写 Pixmap 的像素缓冲区。
+	 */
+	private static Pixmap toPixmap(BufferedImage image) {
+		final int width = image.getWidth();
+		final int height = image.getHeight();
+		final Pixmap pixmap = new Pixmap(width, height, Pixmap.Format.RGBA8888);
+		final int[] argb = image.getRGB(0, 0, width, height, null, 0, width);
+		final ByteBuffer buffer = pixmap.getPixels();
+		buffer.clear();
+		for (int pixel : argb) {
+			buffer.put((byte) (pixel >> 16));
+			buffer.put((byte) (pixel >> 8));
+			buffer.put((byte) pixel);
+			buffer.put((byte) (pixel >>> 24));
+		}
+		buffer.position(0);
+		return pixmap;
 	}
 
 	public Pixmap get(Resource resource) {
@@ -102,7 +133,7 @@ public class PixmapResourcePool extends ResourcePool<String, Pixmap> {
 		try {
 			if (resource.path().isPresent()) return loadPicture(resource.path().get().toString());
 			byte[] data = resource.readAllBytes();
-			return new Pixmap(data, 0, data.length);
+			return decode(new ByteArrayInputStream(data), resource.filename());
 		} catch (Throwable error) {
 			logger.warn("BGA resource load failed: {}", resource.filename());
 			return null;
