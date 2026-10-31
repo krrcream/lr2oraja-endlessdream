@@ -18,6 +18,9 @@ import bms.model.TimeLine;
  * <p>时长取 {@link BMSModel#getLastTime()}（最后一个有数据的 TimeLine），比 Python 补到小节末尾的口径略短，
  * 因此每秒类指标会略偏高，属于已接受的近似。</p>
  *
+ * <p>2026-10-31 起 CHORD／CHARGE／SO-FLAN 三条改用 7545 张官方真值重新标定的算法，
+ * 并按谱面风格选 SP／DP 断点；PEAK 的窗口由 4 秒放宽到 4.18 秒。详见 IIDX_Radar_7Axis.md。</p>
+ *
  * <p>第七轴 STREAM 是我们自造的（IIDX 没有这一轴），2026-10-29 按用户要求停用，算法以注释形式保留在本类里。</p>
  *
  * @author endlessdream
@@ -30,12 +33,20 @@ public final class ChartRadarCalculator {
 	/** 轴标签，顺时针从正上方开始 */
 	public static final String[] AXIS_LABELS = { "NOTES", "PEAK", "SCRATCH", "SO-FLAN", "CHARGE", "CHORD" };
 
-	/** IIDX 四段折线的断点（DP） */
+	/** NOTES / PEAK 的 IIDX 四段折线断点（DP；这两轴沿用原口径，不区分风格） */
 	private static final double[] NOTES_BREAK = { 10.4, 15.4, 17.9, 20.0 };
 	private static final double[] PEAK_BREAK = { 70.0, 113.0, 122.0, 170.0 };
 
-	/** 4 秒峰值窗口（微秒） */
-	private static final long PEAK_WINDOW_MICRO = 4000000L;
+	/** 后三轴的 IIDX 四段折线断点：SP / DP 各一套 */
+	private static final double[] SOFLAN_BREAK_SP = { 440.0, 1000.0, 2000.0, 3800.0 };
+	private static final double[] SOFLAN_BREAK_DP = { 440.0, 1000.0, 2000.0, 4000.0 };
+	private static final double[] CHARGE_BREAK_SP = { 160.0, 310.0, 440.0, 900.0 };
+	private static final double[] CHARGE_BREAK_DP = { 145.0, 280.0, 400.0, 750.0 };
+	private static final double[] CHORD_BREAK_SP = { 500.0, 1010.0, 1200.0, 1450.0 };
+	private static final double[] CHORD_BREAK_DP = { 500.0, 1000.0, 1200.0, 1500.0 };
+
+	/** 峰值窗口：名义 4 秒，实测最优 4.18 秒（微秒） */
+	private static final long PEAK_WINDOW_MICRO = 4180000L;
 
 	/*
 	 * 以下四项是已停用的 STREAM 轴参数（第七轴由我们自己定义，2026-10-29 按用户要求停用，保留备查）：
@@ -46,15 +57,25 @@ public final class ChartRadarCalculator {
 	private static final double STREAM_WEIGHT_SINGLE = 1.0;
 	private static final double STREAM_WEIGHT_CHORD = 0.6;
 
-	/** 四条拟合轴的系数，来自 284 张 DP ANOTHER 的拟合结果（见 iidx_map.py 的 FIT 表） */
+	/** SCRATCH 的拟合系数，来自 284 张 DP ANOTHER 的拟合结果（见 iidx_map.py 的 FIT 表） */
 	private static final double SCRATCH_A = -6.968739404026607;
 	private static final double SCRATCH_B = 119.25351709015858;
-	private static final double CHORD_A = -33.70389651658037;
-	private static final double CHORD_B = 72.5274098806752;
-	private static final double CHARGE_A = -2.7879015241802705;
-	private static final double CHARGE_B = 170.35467959271412;
-	private static final double SOFLAN_A = 1.1735839585024657;
-	private static final double SOFLAN_B = 52.84549408943682;
+
+	/** CHORD：按和弦规模计权后除以时长，再走官方四段折线（7545 张拟合） */
+	private static final double CHORD_UNIT_M2 = 116.86;
+	private static final double CHORD_UNIT_M3 = 273.75;
+	private static final double CHORD_UNIT_M4 = 426.46;
+	private static final double CHORD_UNIT_M5P = 670.44;
+
+	/** CHARGE：442 · h^0.88 · L^0.35，h 为长条头/秒，L 为按住时长合计/秒 */
+	private static final double CHARGE_SCALE = 442.0;
+	private static final double CHARGE_HEAD_EXPONENT = 0.88;
+	private static final double CHARGE_HOLD_EXPONENT = 0.35;
+
+	/** SO-FLAN：9.954 · Σ rate^0.25 · Σ(变化点后 4 秒内音符的线性衰减权重) */
+	private static final double SOFLAN_SCALE = 9.954;
+	private static final double SOFLAN_RATE_EXPONENT = 0.25;
+	private static final long SOFLAN_WINDOW_MICRO = 4000000L;
 
 	/** BPM 视为未变化的容差 */
 	private static final double BPM_EPSILON = 1e-9;
@@ -75,15 +96,27 @@ public final class ChartRadarCalculator {
 	public static float[] compute(BMSModel model) {
 		final Mode mode = model.getMode();
 		final int lanes = mode.key;
+		final boolean singlePlay = mode == Mode.BEAT_7K;
 		final TimeLine[] timelines = model.getAllTimeLines();
 
 		int noteCount = 0;      // notes_per_sec：单点与长条头
 		int scratchCount = 0;   // scratch_per_sec：含长条头尾
-		int lnHeadCount = 0;    // ln_per_sec：全部长条头（含皿）
-		int pairCount = 0;      // pairs_per_sec：n 键和弦贡献 C(n,2)
-		int bpmChanges = 0;
+		int lnHeadCount = 0;    // 长条头（含皿），CHARGE 的 h
+		long lnHoldMicros = 0;  // 长条按住时长合计，CHARGE 的 L
+
+		// 和弦规模直方图：m2／m3／m4／m5p 分别为同刻 2／3／4／5+ 键的时刻数
+		int chordM2 = 0;
+		int chordM3 = 0;
+		int chordM4 = 0;
+		int chordM5Plus = 0;
+
+		final long[] lnStartMicro = new long[lanes];
+		for (int lane = 0; lane < lanes; lane++) {
+			lnStartMicro[lane] = -1;
+		}
 
 		final LongBuffer peakTimes = new LongBuffer();
+		final BpmChangeBuffer bpmChanges = new BpmChangeBuffer();
 		// STREAM 停用后不再需要连打候选缓冲：final StreamBuffer streamEvents = new StreamBuffer();
 
 		double previousBpm = model.getBpm();
@@ -91,11 +124,15 @@ public final class ChartRadarCalculator {
 			final long time = timeline.getMicroTime();
 			final double bpm = timeline.getBPM();
 			if (Math.abs(bpm - previousBpm) > BPM_EPSILON) {
-				bpmChanges++;
+				final double low = Math.min(previousBpm, bpm);
+				final double high = Math.max(previousBpm, bpm);
+				if (low > 0) {
+					bpmChanges.add(time, (high - low) / low);
+				}
 				previousBpm = bpm;
 			}
 
-			// 同刻分组：去掉长条尾的那份用于同时押对数
+			// 同刻分组：去掉长条尾的那份用于和弦规模统计
 			int groupHead = 0;
 			for (int lane = 0; lane < lanes; lane++) {
 				final Note note = timeline.getNote(lane);
@@ -106,8 +143,14 @@ public final class ChartRadarCalculator {
 					groupHead++;
 				}
 			}
-			if (groupHead > 1) {
-				pairCount += groupHead * (groupHead - 1) / 2;
+			if (groupHead == 2) {
+				chordM2++;
+			} else if (groupHead == 3) {
+				chordM3++;
+			} else if (groupHead == 4) {
+				chordM4++;
+			} else if (groupHead > 4) {
+				chordM5Plus++;
 			}
 
 			for (int lane = 0; lane < lanes; lane++) {
@@ -126,20 +169,46 @@ public final class ChartRadarCalculator {
 					peakTimes.add(time);
 					if (note instanceof LongNote) {
 						lnHeadCount++;
+						lnStartMicro[lane] = time;
 					}
+				} else if (lnStartMicro[lane] >= 0 && time > lnStartMicro[lane]) {
+					// 同一轨道的长条逐条累加，不合并重叠
+					lnHoldMicros += time - lnStartMicro[lane];
+					lnStartMicro[lane] = -1;
 				}
 			}
 		}
 
 		final double seconds = Math.max(model.getLastTime() / 1000.0, 0.001);
 
-		// 4 秒滑动峰值：左端落在某个音符上，双指针不回退（与 axes.py 的实现一致）
+		// 4.18 秒滑动峰值：左端落在某个音符上，双指针不回退（与 axes.py 的实现一致）
 		int peak = 0;
 		for (int i = 0, j = 0; i < peakTimes.size; i++) {
 			while (j < peakTimes.size && peakTimes.values[j] - peakTimes.values[i] <= PEAK_WINDOW_MICRO) {
 				j++;
 			}
 			peak = Math.max(peak, j - i);
+		}
+
+		/*
+		 * SO-FLAN：对每个 BPM 变化点，累计其后方 4 秒内音符的线性衰减权重，再乘变化率的 0.25 次幂。
+		 * 完全不变速时直接给 0，不经过折线，避免拟合残留常数把 0 变成非 0。
+		 */
+		double soflan = 0.0;
+		if (bpmChanges.size > 0) {
+			for (int c = 0; c < bpmChanges.size; c++) {
+				final long changeTime = bpmChanges.times[c];
+				final int from = upperBound(peakTimes.values, peakTimes.size, changeTime);
+				final int to = upperBound(peakTimes.values, peakTimes.size, changeTime + SOFLAN_WINDOW_MICRO);
+				double weightSum = 0.0;
+				for (int i = from; i < to; i++) {
+					weightSum += 1.0 - (double) (peakTimes.values[i] - changeTime) / SOFLAN_WINDOW_MICRO;
+				}
+				if (weightSum > 0) {
+					soflan += Math.pow(bpmChanges.rates[c], SOFLAN_RATE_EXPONENT) * weightSum;
+				}
+			}
+			soflan *= SOFLAN_SCALE;
 		}
 
 		/*
@@ -153,10 +222,24 @@ public final class ChartRadarCalculator {
 		radar[0] = (float) iidxRadar(noteCount / seconds, NOTES_BREAK);
 		radar[1] = (float) iidxRadar(peak, PEAK_BREAK);
 		radar[2] = (float) clamp(SCRATCH_A + SCRATCH_B * Math.log1p(scratchCount / seconds));
-		// 拟合式带 1.1736 的截距，完全不变速时会给出 1.17 分，按规格直接归零
-		radar[3] = bpmChanges == 0 ? 0.0f : (float) clamp(SOFLAN_A + SOFLAN_B * Math.log1p(bpmChanges));
-		radar[4] = (float) clamp(CHARGE_A + CHARGE_B * Math.sqrt(lnHeadCount / seconds));
-		radar[5] = (float) clamp(CHORD_A + CHORD_B * Math.log1p(pairCount / seconds));
+		radar[3] = bpmChanges.size == 0 ? 0.0f
+				: (float) iidxRadar(soflan, singlePlay ? SOFLAN_BREAK_SP : SOFLAN_BREAK_DP);
+
+		// CHARGE：没有长条时直接给 0
+		if (lnHeadCount == 0 || lnHoldMicros <= 0) {
+			radar[4] = 0.0f;
+		} else {
+			final double headsPerSecond = lnHeadCount / seconds;
+			final double holdPerSecond = (lnHoldMicros / 1000000.0) / seconds;
+			final double chargeRaw = CHARGE_SCALE
+					* Math.pow(headsPerSecond, CHARGE_HEAD_EXPONENT)
+					* Math.pow(holdPerSecond, CHARGE_HOLD_EXPONENT);
+			radar[4] = (float) iidxRadar(chargeRaw, singlePlay ? CHARGE_BREAK_SP : CHARGE_BREAK_DP);
+		}
+
+		final double chordRaw = CHORD_UNIT_M2 * chordM2 + CHORD_UNIT_M3 * chordM3
+				+ CHORD_UNIT_M4 * chordM4 + CHORD_UNIT_M5P * chordM5Plus;
+		radar[5] = (float) iidxRadar(chordRaw / seconds, singlePlay ? CHORD_BREAK_SP : CHORD_BREAK_DP);
 		return radar;
 	}
 
@@ -193,7 +276,7 @@ public final class ChartRadarCalculator {
 	}
 
 	/*
-	 * 以下两个二分查找只服务于已停用的 STREAM 轴，保留备查。
+	 * 以下两个二分查找：upperBound 用于 SO-FLAN 的窗口取音符，lowerBound 目前只服务于已停用的 STREAM 轴。
 	 */
 	private static int lowerBound(long[] values, int size, long target) {
 		int low = 0;
@@ -223,7 +306,7 @@ public final class ChartRadarCalculator {
 		return low;
 	}
 
-	/** 4 秒峰值用的时间轴缓冲，只存长条头与单点 */
+	/** 峰值用的时间轴缓冲，只存长条头与单点 */
 	private static final class LongBuffer {
 
 		private long[] values = new long[512];
@@ -234,6 +317,24 @@ public final class ChartRadarCalculator {
 				values = Arrays.copyOf(values, size * 2);
 			}
 			values[size++] = value;
+		}
+	}
+
+	/** BPM 变化点缓冲：时间与变化率，供 SO-FLAN 使用 */
+	private static final class BpmChangeBuffer {
+
+		private long[] times = new long[64];
+		private double[] rates = new double[64];
+		private int size;
+
+		private void add(long time, double rate) {
+			if (size == times.length) {
+				times = Arrays.copyOf(times, size * 2);
+				rates = Arrays.copyOf(rates, size * 2);
+			}
+			times[size] = time;
+			rates[size] = rate;
+			size++;
 		}
 	}
 
