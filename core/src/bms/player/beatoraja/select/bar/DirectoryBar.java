@@ -98,7 +98,8 @@ public abstract class DirectoryBar extends Bar {
 	public Bar[] getChildren(Mode mode, boolean containsSameFolder) {
 		Array<Bar> l = new Array<Bar>();
 		for (Bar b : getChildren()) {
-			if (!(mode != null && b instanceof SongBar && ((SongBar) b).getSongData().getMode() != 0
+			if (!(mode != null && b instanceof SongBar && !((SongBar) b).isModeFilterExempt()
+					&& ((SongBar) b).getSongData().getMode() != 0
 					&& ((SongBar) b).getSongData().getMode() != mode.id)) {
 				boolean addBar = true;
 				if (!containsSameFolder) {

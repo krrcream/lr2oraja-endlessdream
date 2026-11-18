@@ -12,8 +12,8 @@ import bms.player.beatoraja.song.SongData;
 /**
  * LDJ(iidx2bms)的虚拟根文件夹(LDJ).
  *
- * 在开头放置难度表的入口({@link LDJTableFolderBar})，接着
- * 把由 iidx2bms 的 music_data.json 生成的 {@link SongBar} 按☆等级
+ * 在开头放置 Versions 栏(按代数分组)，接着放置难度表的入口({@link LDJTableFolderBar})，
+ * 再把由 iidx2bms 的 music_data.json 生成的 {@link SongBar} 按☆等级
  * 分别放入 {@link LDJStarFolderBar} 排列.把 SP☆1～☆12 与 DP☆1～☆12 放在同一画面中.
  *
  * 连 1 个难度表 json 都读不到时不插入 Table 栏.☆栏的
@@ -42,14 +42,18 @@ public class LDJFolderBar extends FolderBar {
 	public LDJFolderBar(MusicSelector selector, LDJSongProvider provider, SongBar[] spBars, SongBar[] dpBars) {
 		super(selector, createFolderData("LDJ"), "");
 		setSortable(false);
-		final List<Bar> stars = new ArrayList<Bar>();
+		final List<Bar> children = new ArrayList<Bar>();
+		final Bar versions = LDJVersionGroupBar.create(selector, provider);
+		if (versions != null) {
+			children.add(versions);
+		}
 		final Bar table = LDJTableFolderBar.createIfAvailable(selector, new LDJTableProvider(provider));
 		if (table != null) {
-			stars.add(table);
+			children.add(table);
 		}
-		addStarBars(stars, selector, spBars, "SP☆");
-		addStarBars(stars, selector, dpBars, "DP☆");
-		this.children = stars.toArray(new Bar[0]);
+		addStarBars(children, selector, spBars, "SP☆");
+		addStarBars(children, selector, dpBars, "DP☆");
+		this.children = children.toArray(new Bar[0]);
 	}
 
 	private static FolderData createFolderData(String title) {
