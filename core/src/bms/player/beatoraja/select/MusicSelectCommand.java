@@ -98,6 +98,10 @@ public enum MusicSelectCommand {
 		}
 	}),
 	DOWNLOAD_IPFS(selector -> {
+		if (selector.main.getConfig().isEnableBackbeat()) {
+			ImGuiNotify.warning("Backbeat download is enabled; IPFS/HTTP downloads are disabled.");
+			return;
+		}
         Queue<DirectoryBar> dir = selector.getBarManager().getDirectory();
         boolean startdownload = false;
         for (DirectoryBar d : dir) {
@@ -123,6 +127,10 @@ public enum MusicSelectCommand {
 		}
 	}),
 	DOWNLOAD_HTTP(selector -> {
+		if (selector.main.getConfig().isEnableBackbeat()) {
+			ImGuiNotify.warning("Backbeat download is enabled; IPFS/HTTP downloads are disabled.");
+			return;
+		}
 		Bar current = selector.getBarManager().getSelected();
 		if (current instanceof SongBar) {
 			final SongData song = ((SongBar) current).getSongData();
@@ -137,6 +145,10 @@ public enum MusicSelectCommand {
 		}
 	}),
 	DOWNLOAD_COURSE_HTTP(selector -> {
+		if (selector.main.getConfig().isEnableBackbeat()) {
+			ImGuiNotify.warning("Backbeat download is enabled; IPFS/HTTP downloads are disabled.");
+			return;
+		}
 		Bar current = selector.getBarManager().getSelected();
 		if (current instanceof GradeBar) {
 			final SongData[] songs = ((GradeBar) current).getSongDatas();
@@ -196,6 +208,7 @@ public enum MusicSelectCommand {
             // checking for isEnableHttp because batch downloading is
             // currently the ontry entry in this menu
 			if (!alreadyInContextMenu && !((TableBar) previous).isBackbeat()
+					&& !selector.main.getConfig().isEnableBackbeat()
 					&& selector.main.getConfig().isEnableHttp()) {
                 bar.updateBar(
                     new ContextMenuBar(selector, ((TableBar)previous), ((HashBar)current)));

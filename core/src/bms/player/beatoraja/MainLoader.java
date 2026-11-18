@@ -295,8 +295,16 @@ public class MainLoader extends Application {
 			try {
 				Config config = Config.read();
 				Class.forName("org.sqlite.JDBC");
+				BackbeatIntegration integration = getBackbeatIntegration();
+				if (config.isEnableBackbeat()) {
+					try {
+						integration.addServer(config.getBackbeatServerUrl());
+					} catch (RuntimeException error) {
+						logger.warn("Failed to add Backbeat server: {}", error.getMessage());
+					}
+				}
 				songdb = new SQLiteSongDatabaseAccessor(config.getSongpath(), config.getBmsroot());
-				((SQLiteSongDatabaseAccessor) songdb).pullFromBackbeat(getBackbeatIntegration(), null);
+				((SQLiteSongDatabaseAccessor) songdb).pullFromBackbeat(integration, null);
 			} catch (ClassNotFoundException | PlayerConfigException e) {
 				logger.error("Failed to access score database: {}", e.getLocalizedMessage());
 			}
@@ -317,10 +325,11 @@ public class MainLoader extends Application {
 	 * of content to read, not unlike adding a new folder to read charts from,
 	 * only this folder is a sqlite store.
 	 */
-	public static void pullFromBackbeat(SongInformationAccessor info) {
+	public static boolean pullFromBackbeat(SongInformationAccessor info) {
 		if (songdb instanceof SQLiteSongDatabaseAccessor sqlite) {
-			sqlite.pullFromBackbeat(getBackbeatIntegration(), info);
+			return sqlite.pullFromBackbeat(getBackbeatIntegration(), info);
 		}
+		return false;
 	}
 
 	private static synchronized void closeBackbeat() {

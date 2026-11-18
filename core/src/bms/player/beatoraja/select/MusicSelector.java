@@ -10,6 +10,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import bms.player.beatoraja.modmenu.ImGuiNotify;
+import bms.player.beatoraja.modmenu.BackbeatDownloadState;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.*;
@@ -263,6 +264,8 @@ public final class MusicSelector extends MainState {
 				SongData song = ((SongBar) current).getSongData();
 				if (((SongBar) current).existsSong()) {
 					readChart(song, current);					
+				} else if (main.getConfig().isEnableBackbeat()) {
+					BackbeatDownloadState.start(main, song, () -> refreshDownloadedSong(song));
 				} else if (song.getIpfs() != null && main.getMusicDownloadProcessor() != null
 						&& main.getMusicDownloadProcessor().isAlive()) {
 					execute(MusicSelectCommand.DOWNLOAD_IPFS);
@@ -610,6 +613,44 @@ public final class MusicSelector extends MainState {
 
 	public Bar getSelectedBar() {
 		return manager.getSelected();
+	}
+
+	/**
+	 * 下载完成并同步 songdb 后，尽量把当前 bar 原地换成可玩的 SongData，
+	 * 避免重建目录导致光标跳走。
+	 */
+	private void refreshDownloadedSong(SongData missing) {
+		String hash = missing.getSha256();
+		if (hash == null || hash.isBlank()) {
+			hash = missing.getMd5();
+		}
+		if (hash == null || hash.isBlank()) {
+			manager.updateBar();
+			return;
+		}
+		SongData[] downloaded = songdb.getSongDatas(new String[] { hash });
+		Bar current = manager.getSelected();
+		if (downloaded.length > 0 && downloaded[0] != null
+				&& current instanceof SongBar songBar && sameChart(songBar.getSongData(), missing)) {
+			songBar.setSongData(downloaded[0]);
+			bar.updateBarText();
+			return;
+		}
+		manager.updateBar();
+	}
+
+	private static boolean sameChart(SongData a, SongData b) {
+		if (a == null || b == null) {
+			return false;
+		}
+		String asha = a.getSha256();
+		String bsha = b.getSha256();
+		if (asha != null && !asha.isBlank() && asha.equals(bsha)) {
+			return true;
+		}
+		String amd5 = a.getMd5();
+		String bmd5 = b.getMd5();
+		return amd5 != null && !amd5.isBlank() && amd5.equals(bmd5);
 	}
 
 	public BarRenderer getBarRender() {

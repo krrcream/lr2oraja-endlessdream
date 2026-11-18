@@ -3,6 +3,7 @@ package bms.player.beatoraja.modmenu;
 import bms.tool.mdprocessor.DownloadTask;
 import bms.player.beatoraja.modmenu.DownloadTaskState;
 import bms.tool.mdprocessor.HttpDownloadProcessor;
+import ac.backbeat.sdk.DownloadState;
 import imgui.ImColor;
 import imgui.ImGui;
 import imgui.flag.ImGuiCond;
@@ -33,7 +34,8 @@ public class DownloadTaskMenu {
         if (ImGui.begin("Download Tasks", showDownloadTasksWindow, ImGuiWindowFlags.AlwaysAutoResize)) {
             Map<Integer, DownloadTask> running = DownloadTaskState.runningDownloadTasks;
             Map<Integer, DownloadTask> expired = DownloadTaskState.expiredTasks;
-            if (running.isEmpty() && expired.isEmpty()) {
+            List<BackbeatDownloadState.Task> backbeatTasks = BackbeatDownloadState.tasks();
+            if (running.isEmpty() && expired.isEmpty() && backbeatTasks.isEmpty()) {
                 ImGui.text("No Download Task. Try selecting missing bms to submit new task!");
             } else {
                 if (ImGui.beginTabBar("DownloadTasksTabBar")) {
@@ -45,12 +47,63 @@ public class DownloadTaskMenu {
                         renderTaskTable(expired.values().stream().toList());
                         ImGui.endTabItem();
                     }
+                    if (ImGui.beginTabItem("Backbeat")) {
+                        renderBackbeatTable(backbeatTasks);
+                        ImGui.endTabItem();
+                    }
 
                     ImGui.endTabBar();
                 }
             }
         }
         ImGui.end();
+    }
+
+    private static void renderBackbeatTable(List<BackbeatDownloadState.Task> tasks) {
+        if (ImGui.beginTable("BackbeatDownloadTaskTable", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY, 0, ImGui.getTextLineHeight() * 12)) {
+            ImGui.tableSetupScrollFreeze(0, 1);
+            ImGui.tableSetupColumn("Task");
+            ImGui.tableSetupColumn("State");
+            ImGui.tableSetupColumn("Progress");
+            ImGui.tableSetupColumn("Op");
+            ImGui.tableHeadersRow();
+            for (BackbeatDownloadState.Task task : tasks) {
+                ImGui.tableNextRow();
+                ImGui.pushID(task.chartId);
+
+                ImGui.tableSetColumnIndex(0);
+                ImGui.text(task.title);
+
+                ImGui.tableSetColumnIndex(1);
+                ImGui.text(task.state.name());
+
+                ImGui.tableSetColumnIndex(2);
+                if (task.error != null && !task.error.isEmpty()) {
+                    ImGui.textColored(ImColor.rgb(255, 0, 0), task.error);
+                } else if (task.total > 0) {
+                    int percent = (int) Math.min(100, task.bytes * 100.0 / task.total);
+                    ImGui.text(String.format("%s/%s (%d%%)", humanizeFileSize(task.bytes),
+                            humanizeFileSize(task.total), percent));
+                } else {
+                    ImGui.text(humanizeFileSize(task.bytes));
+                }
+
+                ImGui.tableSetColumnIndex(3);
+                if (task.state == DownloadState.FAILED || task.state == DownloadState.CANCELLED) {
+                    if (ImGui.button("Retry")) {
+                        BackbeatDownloadState.retry(task.chartId);
+                    }
+                } else if (task.synced) {
+                    ImGui.textDisabled("Ready");
+                }
+
+                ImGui.popID();
+            }
+            ImGui.endTable();
+        }
+        if (ImGui.button("Clear finished")) {
+            BackbeatDownloadState.clearFinished();
+        }
     }
 
     private static void renderTaskTable(List<DownloadTask> tasks) {
@@ -78,7 +131,7 @@ public class DownloadTaskMenu {
 
                 ImGui.tableSetColumnIndex(2);
                 if (task.getDownloadTaskStatus() == DownloadTask.DownloadTaskStatus.Error) {
-                    if (ImGui.button("Retry")) {
+                    if (ImGui.button("Retry") && processor != null) {
                         processor.retryDownloadTask(task);
                     }
                 }

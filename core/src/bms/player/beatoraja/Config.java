@@ -189,6 +189,13 @@ public class Config implements Validatable {
 	private String downloadDirectory = DEFAULT_DOWNLOAD_DIRECTORY;
 	public static final String DEFAULT_DOWNLOAD_DIRECTORY = "http_download";
 
+	/**
+	 * Backbeat 自动下载：开启后缺谱统一走 Backbeat，IPFS/HTTP 下载被跳过。
+	 */
+	private boolean enableBackbeat = false;
+	private String backbeatServerUrl = "https://data.makiba.ac/";
+	private String backbeatStorePath = "";
+
 	private int irSendCount = 5;
 
 	private boolean useDiscordRPC = false;
@@ -473,7 +480,7 @@ public class Config implements Validatable {
 	}
 
 	public boolean isShowNoSongExistingBar() {
-		return showNoSongExistingBar || isEnableHttp();
+		return showNoSongExistingBar || isEnableHttp() || isEnableBackbeat();
 	}
 
 	public void setShowNoSongExistingBar(boolean showNoExistingSongBar) {
@@ -715,6 +722,30 @@ public class Config implements Validatable {
 		this.enableHttp = enableHttp;
 	}
 
+	public boolean isEnableBackbeat() {
+		return enableBackbeat;
+	}
+
+	public void setEnableBackbeat(boolean enableBackbeat) {
+		this.enableBackbeat = enableBackbeat;
+	}
+
+	public String getBackbeatServerUrl() {
+		return backbeatServerUrl;
+	}
+
+	public void setBackbeatServerUrl(String backbeatServerUrl) {
+		this.backbeatServerUrl = backbeatServerUrl;
+	}
+
+	public String getBackbeatStorePath() {
+		return backbeatStorePath;
+	}
+
+	public void setBackbeatStorePath(String backbeatStorePath) {
+		this.backbeatStorePath = backbeatStorePath;
+	}
+
 	public String getDownloadSource() {
 		return downloadSource;
 	}
@@ -862,6 +893,12 @@ public class Config implements Validatable {
 		bgaExpand = MathUtils.clamp(bgaExpand, 0, 2);
 		if (ipfsurl == null) {
 			ipfsurl = "https://gateway.ipfs.io/";
+		}
+		if (backbeatServerUrl == null) {
+			backbeatServerUrl = "https://data.makiba.ac/";
+		}
+		if (backbeatStorePath == null) {
+			backbeatStorePath = "";
 		}
 
 		songpath = songpath != null ? songpath : SONGPATH_DEFAULT;
