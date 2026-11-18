@@ -428,6 +428,20 @@
                         </children>
                     </GridPane>
 
+                    <CheckBox fx:id="enableBackbeat" mnemonicParsing="false" prefHeight="18.0" text="%ENABLE_BACKBEAT">
+                        <VBox.margin>
+                            <Insets top="10.0" />
+                        </VBox.margin>
+                    </CheckBox>
+                    <GridPane hgap="10" vgap="5">
+                        <children>
+                            <Label text="%BACKBEAT_SERVER_URL" prefHeight="25.0" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                            <TextField fx:id="backbeatServerUrl" prefHeight="25.0" prefWidth="400" promptText="https://data.makiba.ac/" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+                            <Label text="%BACKBEAT_STORE_PATH" prefHeight="25.0" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                            <TextField fx:id="backbeatStorePath" prefHeight="25.0" prefWidth="400" promptText="D:\Backbeat\data" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                        </children>
+                    </GridPane>
+
                <VBox prefHeight="150.0" prefWidth="100.0" visible="false">
                   <children>
                      <HBox prefHeight="31.0" prefWidth="780.0">

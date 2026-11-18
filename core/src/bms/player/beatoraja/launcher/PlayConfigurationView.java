@@ -14,6 +14,7 @@ import java.util.function.Supplier;
 
 import bms.player.beatoraja.exceptions.PlayerConfigException;
 import bms.player.beatoraja.external.ScoreDataImporter;
+import bms.player.beatoraja.backbeat.BackbeatConfigFile;
 
 import bms.tool.mdprocessor.HttpDownloadProcessor;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -269,6 +270,14 @@ public class PlayConfigurationView implements Initializable {
 	private TextField overrideDownloadURL;
 
 	@FXML
+	private CheckBox enableBackbeat;
+	@FXML
+	private TextField backbeatServerUrl;
+	@FXML
+	private TextField backbeatStorePath;
+	private String loadedBackbeatStorePath = "";
+
+	@FXML
 	private VBox skin;
 	@FXML
 	private VideoConfigurationView videoController;
@@ -351,6 +360,13 @@ public class PlayConfigurationView implements Initializable {
 		initComboBox(autosavereplay4, autosaves);
 
 		httpDownloadSource.getItems().setAll(HttpDownloadProcessor.DOWNLOAD_SOURCES.keySet());
+		// Backbeat 开启后，旧的 IPFS/HTTP 下载方式在界面上直接置灰。
+		enableIpfs.disableProperty().bind(enableBackbeat.selectedProperty());
+		ipfsurl.disableProperty().bind(enableBackbeat.selectedProperty());
+		enableHttp.disableProperty().bind(enableBackbeat.selectedProperty());
+		httpDownloadSource.disableProperty().bind(enableBackbeat.selectedProperty());
+		defaultDownloadURL.disableProperty().bind(enableBackbeat.selectedProperty());
+		overrideDownloadURL.disableProperty().bind(enableBackbeat.selectedProperty());
 		notesdisplaytiming.setValueFactoryValues(PlayerConfig.JUDGETIMING_MIN, PlayerConfig.JUDGETIMING_MAX, 0, 1);
 		resourceController.init(this);
 		discordController.init(this);
@@ -485,6 +501,17 @@ public class PlayConfigurationView implements Initializable {
 		httpDownloadSource.setValue(config.getDownloadSource());
 		defaultDownloadURL.setText(config.getDefaultDownloadURL());
 		overrideDownloadURL.setText(config.getOverrideDownloadURL());
+
+		enableBackbeat.setSelected(config.isEnableBackbeat());
+		backbeatServerUrl.setText(config.getBackbeatServerUrl());
+		String backbeatPath = config.getBackbeatStorePath();
+		try {
+			backbeatPath = BackbeatConfigFile.readStorePath().orElse(backbeatPath);
+		} catch (IOException | RuntimeException error) {
+			logger.warn("Failed to read backbeat.toml: {}", error.getMessage());
+		}
+		backbeatStorePath.setText(backbeatPath == null ? "" : backbeatPath);
+		loadedBackbeatStorePath = backbeatStorePath.getText();
 
 		if(players.getItems().contains(config.getPlayername())) {
 			players.setValue(config.getPlayername());
@@ -632,6 +659,22 @@ public class PlayConfigurationView implements Initializable {
 		config.setEnableHttp(enableHttp.isSelected());
 		config.setDownloadSource(httpDownloadSource.getValue());
 		config.setOverrideDownloadURL(overrideDownloadURL.getText());
+
+		config.setEnableBackbeat(enableBackbeat.isSelected());
+		config.setBackbeatServerUrl(backbeatServerUrl.getText() == null ? "" : backbeatServerUrl.getText().trim());
+		String backbeatPath = backbeatStorePath.getText() == null ? "" : backbeatStorePath.getText().trim();
+		config.setBackbeatStorePath(backbeatPath);
+		if (!backbeatPath.isEmpty() && !backbeatPath.equals(loadedBackbeatStorePath)) {
+			try {
+				BackbeatConfigFile.writeStorePath(backbeatPath);
+				loadedBackbeatStorePath = backbeatPath;
+			} catch (IOException | RuntimeException error) {
+				logger.warn("Failed to write backbeat.toml: {}", error.getMessage());
+				Alert alert = new Alert(Alert.AlertType.WARNING,
+						"Failed to write Backbeat store path: " + error.getMessage());
+				alert.showAndWait();
+			}
+		}
 
 		config.setClipboardWhenScreenshot(clipboardScreenshot.isSelected());
 

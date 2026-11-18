@@ -161,7 +161,7 @@ public class MainController {
 
 		this.bmsfile = f;
 
-		if (config.isEnableIpfs()) {
+		if (!config.isEnableBackbeat() && config.isEnableIpfs()) {
 			Path ipfspath = Paths.get("ipfs").toAbsolutePath();
 			if (!ipfspath.toFile().exists())
 				ipfspath.toFile().mkdirs();
@@ -171,7 +171,7 @@ public class MainController {
 				getConfig().setBmsroot(roots.toArray(new String[roots.size()]));
 			}
 		}
-		if (config.isEnableHttp()) {
+		if (!config.isEnableBackbeat() && config.isEnableHttp()) {
 			Path httpdlPath = Paths.get(config.getDownloadDirectory()).toAbsolutePath();
 			if (!httpdlPath.toFile().exists())
 				httpdlPath.toFile().mkdirs();
@@ -497,7 +497,7 @@ public class MainController {
 
 		Gdx.gl.glClearColor(0, 0, 0, 1);
 
-		if (config.isEnableIpfs()) {
+		if (!config.isEnableBackbeat() && config.isEnableIpfs()) {
 			download = new MusicDownloadProcessor(config.getIpfsUrl(), (md5) -> {
 				SongData[] s = getSongDatabase().getSongDatas(md5);
 				String[] result = new String[s.length];
@@ -509,7 +509,7 @@ public class MainController {
 			download.start(null);
 		}
 
-		if (config.isEnableHttp()) {
+		if (!config.isEnableBackbeat() && config.isEnableHttp()) {
 			HttpDownloadSource httpDownloadSource = HttpDownloadProcessor.DOWNLOAD_SOURCES.get(config.getDownloadSource()).build(config);
 			httpDownloadProcessor = new HttpDownloadProcessor(this, httpDownloadSource, config.getDownloadDirectory());
 			DownloadTaskState.initialize(httpDownloadProcessor);
@@ -694,7 +694,11 @@ public class MainController {
 
         periodicConfigSave();
 
-        if (config.isEnableHttp()) { DownloadTaskState.update(); }
+        if (config.isEnableBackbeat()) {
+            BackbeatDownloadState.update(this);
+        } else if (config.isEnableHttp()) {
+            DownloadTaskState.update();
+        }
         PerformanceMetrics.get().commit();
 
 		imGui.start();
