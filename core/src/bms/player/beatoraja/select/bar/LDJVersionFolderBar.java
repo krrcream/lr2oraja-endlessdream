@@ -47,7 +47,6 @@ public class LDJVersionFolderBar extends FolderBar {
                         continue;
                     }
                     final SongBar bar = new SongBar(LDJSongProvider.createSongData(chart, difficulty));
-                    bar.setModeFilterExempt(true);
                     bars.add(bar);
                 }
             }
