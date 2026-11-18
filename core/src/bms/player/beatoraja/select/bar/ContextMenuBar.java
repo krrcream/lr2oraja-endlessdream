@@ -411,7 +411,8 @@ public class ContextMenuBar extends DirectoryBar {
                 Logger.getGlobal().info("Nothing to fill, it's anything went wrong?");
             }
         }, "Fill Missing Charts", STYLE_SPECIAL, STYLE_TEXT_NEW);
-		if (!table.isBackbeat() && selector.main.getConfig().isEnableHttp()) { options.add(fillMissingCharts); }
+		if (!table.isBackbeat() && !selector.main.getConfig().isEnableBackbeat()
+				&& selector.main.getConfig().isEnableHttp()) { options.add(fillMissingCharts); }
 
         return options.toArray(new Bar[0]);
     }
@@ -430,7 +431,8 @@ public class ContextMenuBar extends DirectoryBar {
                 Logger.getGlobal().info("Nothing to fill, it's anything went wrong?");
             }
         }, "Fill Missing Charts", STYLE_SPECIAL, STYLE_TEXT_NEW);
-		if (!table.isBackbeat() && selector.main.getConfig().isEnableHttp()) { options.add(fillMissingCharts); }
+		if (!table.isBackbeat() && !selector.main.getConfig().isEnableBackbeat()
+				&& selector.main.getConfig().isEnableHttp()) { options.add(fillMissingCharts); }
 
         return options.toArray(new Bar[0]);
     }

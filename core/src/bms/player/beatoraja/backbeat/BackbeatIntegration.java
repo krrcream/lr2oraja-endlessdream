@@ -2,6 +2,9 @@ package bms.player.beatoraja.backbeat;
 
 import ac.backbeat.sdk.AssetData;
 import ac.backbeat.sdk.CourseContents;
+import ac.backbeat.sdk.DataId;
+import ac.backbeat.sdk.DownloadProgress;
+import ac.backbeat.sdk.DownloadSnapshot;
 import ac.backbeat.sdk.PackContents;
 import ac.backbeat.sdk.Store;
 import ac.backbeat.sdk.TableContents;
@@ -38,6 +41,39 @@ public final class BackbeatIntegration implements AutoCloseable {
 
     public String sqliteDetachCommand() {
         return store.sqliteDetachCommand();
+    }
+
+    /**
+     * 把用户填写的服务器注册进 Backbeat 配置。SDK 的 serverAdd 是幂等的。
+     */
+    public void addServer(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        store.serverAdd(url.trim());
+    }
+
+    /**
+     * 触发一次单曲下载。SDK 会同时下载谱面、bundle 和素材，并立即返回。
+     */
+    public void downloadChart(String chartId) {
+        store.serverDownloadChart(chartId);
+    }
+
+    public boolean hasChart(String chartId) {
+        return store.hasChart(chartId);
+    }
+
+    public Optional<DownloadProgress> downloadProgress(String chartId) {
+        return store.downloadProgress(DataId.chart(chartId));
+    }
+
+    public List<DownloadSnapshot> downloadSnapshots() {
+        return store.downloadAllProgress();
+    }
+
+    public boolean hasZeroDataServers() {
+        return store.hasZeroDataServers();
     }
 
     public Optional<byte[]> chartData(SongData song) {

@@ -19,7 +19,7 @@ public class SongBar extends SelectableBar {
     /**
      * 楽曲データ
      */
-    private final SongData song;
+    private SongData song;
     /**
      * バナーデータ
      */
@@ -35,6 +35,13 @@ public class SongBar extends SelectableBar {
 
     public final SongData getSongData() {
         return song;
+    }
+
+    /**
+     * 下载完成后把 barsong 换成 songdb 里带 path / backbeatBundleId 的完整数据。
+     */
+    public void setSongData(SongData song) {
+        this.song = song;
     }
 
     public final boolean existsSong() {
