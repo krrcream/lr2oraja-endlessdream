@@ -341,37 +341,25 @@ public class BarManager {
 		}
 
 		if (l.size > 0) {
-			// Versions 栏这种全部标为模式过滤例外的目录，直接保留 SP/DP 全部谱面，
-			// 也避免下面的循环把玩家当前模式改掉。
 			final PlayerConfig config = select.resource.getPlayerConfig();
-			boolean allModeFilterExempt = true;
-			for (Bar b : l) {
-				if (!(b instanceof SongBar) || !((SongBar) b).isModeFilterExempt()) {
-					allModeFilterExempt = false;
-					break;
-				}
-			}
-			if (!allModeFilterExempt) {
-				int modeIndex = 0;
-				for(;modeIndex < MusicSelector.MODE.length && MusicSelector.MODE[modeIndex] != config.getMode();modeIndex++);
-				for(int trialCount = 0; trialCount < MusicSelector.MODE.length; trialCount++, modeIndex++) {
-					final Mode mode = MusicSelector.MODE[modeIndex % MusicSelector.MODE.length];
-					config.setMode(mode);
-					Array<Bar> remove = new Array<Bar>();
-					for (Bar b : l) {
-						if(b instanceof SongBar && ((SongBar) b).getSongData() != null) {
-							final SongData song = ((SongBar) b).getSongData();
-							if((!showInvisibleCharts && (song.getFavorite() & (SongData.INVISIBLE_SONG | SongData.INVISIBLE_CHART)) != 0)
-									|| (mode != null && !((SongBar) b).isModeFilterExempt()
-										&& song.getMode() != 0 && song.getMode() != mode.id)) {
-								remove.add(b);
-							}
+			int modeIndex = 0;
+			for(;modeIndex < MusicSelector.MODE.length && MusicSelector.MODE[modeIndex] != config.getMode();modeIndex++);
+			for(int trialCount = 0; trialCount < MusicSelector.MODE.length; trialCount++, modeIndex++) {
+				final Mode mode = MusicSelector.MODE[modeIndex % MusicSelector.MODE.length];
+				config.setMode(mode);
+				Array<Bar> remove = new Array<Bar>();
+				for (Bar b : l) {
+					if(b instanceof SongBar && ((SongBar) b).getSongData() != null) {
+						final SongData song = ((SongBar) b).getSongData();
+						if((!showInvisibleCharts && (song.getFavorite() & (SongData.INVISIBLE_SONG | SongData.INVISIBLE_CHART)) != 0)
+								|| (mode != null && song.getMode() != 0 && song.getMode() != mode.id)) {
+							remove.add(b);
 						}
 					}
-					if(l.size != remove.size) {
-						l.removeAll(remove, true);
-						break;
-					}
+				}
+				if(l.size != remove.size) {
+					l.removeAll(remove, true);
+					break;
 				}
 			}
 
