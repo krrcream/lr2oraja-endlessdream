@@ -29,6 +29,11 @@ public class SongBar extends SelectableBar {
      */
     private Pixmap stagefile;
 
+    /**
+     * true 时不参与 SP/DP 的模式过滤。LDJ 的 Versions 栏需要在同一栏中同时显示 SP 与 DP。
+     */
+    private boolean modeFilterExempt;
+
     public SongBar(SongData song) {
         this.song = song;
     }
@@ -55,6 +60,14 @@ public class SongBar extends SelectableBar {
 
     public void setStagefile(Pixmap stagefile) {
     	this.stagefile = stagefile;
+    }
+
+    public boolean isModeFilterExempt() {
+        return modeFilterExempt;
+    }
+
+    public void setModeFilterExempt(boolean modeFilterExempt) {
+        this.modeFilterExempt = modeFilterExempt;
     }
 
     @Override
